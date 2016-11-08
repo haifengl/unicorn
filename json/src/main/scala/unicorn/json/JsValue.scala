@@ -17,7 +17,7 @@
 package unicorn.json
 
 import java.text.SimpleDateFormat
-import java.util.{Date, UUID}
+import java.util.{Date, UUID, TimeZone}
 import scala.language.dynamics
 import scala.language.implicitConversions
 import unicorn.oid.BsonObjectId
@@ -306,6 +306,9 @@ object JsString {
   val empty = JsString("")
 }
 
+/** Date times in UTC times. The date time should be in format
+  * yyyy-MM-dd'T'HH:mm:ss.SSS'Z' such as 2012-07-20T08:00:00.000Z.
+  */
 case class JsDate(value: Date) extends JsValue with Ordered[JsDate] {
   override def toString = JsDate.format.format(value)
   override def equals(o: Any) = o match {
@@ -324,6 +327,7 @@ case class JsDate(value: Date) extends JsValue with Ordered[JsDate] {
 
 object JsDate {
   val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+  format.setTimeZone(TimeZone.getTimeZone("UTC"))
   val formatLength = "yyyy-MM-ddTHH:mm:ss.SSSZ".length
   def apply(date: Long) = new JsDate(new Date(date))
   def apply(date: String) = new JsDate(format.parse(date))
