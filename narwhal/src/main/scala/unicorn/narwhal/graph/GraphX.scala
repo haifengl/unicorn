@@ -24,10 +24,10 @@ import org.apache.spark.SparkContext
 
 import unicorn.bigtable.hbase.HBaseTable
 import unicorn.json._
-import unicorn.unibase.graph.{ReadOnlyGraph, GraphSerializer, GraphVertexColumnFamily, GraphOutEdgeColumnFamily}
+import unicorn.unibase.graph.{Graph, GraphSerializer, GraphVertexColumnFamily, GraphOutEdgeColumnFamily}
 
 /** Unibase graph specialized for HBase with Spark GraphX supports. */
-class GraphX(override val table: HBaseTable, documentVertexTable: HBaseTable) extends ReadOnlyGraph(table, documentVertexTable) {
+class GraphX(override val table: HBaseTable, vertexKeyTable: HBaseTable) extends Graph(table, vertexKeyTable) {
 
   /** Returns a Spark GraphX object.
     *

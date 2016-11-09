@@ -21,6 +21,7 @@ import org.specs2.specification.BeforeAfterAll
 import unicorn.bigtable.hbase.HBase
 import unicorn.json._
 import unicorn.narwhal._
+import unicorn.oid.Snowflake
 
 /**
  * @author Haifeng Li
@@ -33,6 +34,8 @@ class GraphXSpec extends Specification with BeforeAfterAll {
   val bigtable = HBase()
   val db = new Narwhal(bigtable)
   val graphName = "unicorn_unibase_graph_test"
+
+  implicit val snowflake = Snowflake(db.zookeeper, "/unicorn/snowflake/graph/test")
 
   var saturn = 0L
   var sky = 0L
@@ -50,7 +53,7 @@ class GraphXSpec extends Specification with BeforeAfterAll {
   override def beforeAll = {
     db.createGraph(graphName)
 
-    val gods = db.graph(graphName, db.zookeeper)
+    val gods = db.graph(graphName)
 
     saturn = gods.addVertex(json"""{"label": "titan", "name": "saturn", "age": 10000}""")
     sky = gods.addVertex(json"""{"label": "location", "name": "sky"}""")

@@ -32,18 +32,16 @@ class GraphSerializer(
   val edgeSerializer: BsonSerializer = new BsonSerializer(ByteBuffer.allocate(10485760))) extends Logging {
 
   /** Serializes vertex id. */
-  def serialize(id: Long): Array[Byte] = {
+  def serialize(id: Long): ByteArray = {
     buffer.clear
     buffer.putLong(id)
     buffer
   }
 
   /** Serializes the document vertex lookup table row key. */
-  def serialize(table: String, tenant: JsValue, key: JsValue): Array[Byte] = {
+  def serialize( key: String): ByteArray = {
     buffer.clear
-    edgeSerializer.serialize(buffer, table)
-    edgeSerializer.serialize(buffer, tenant)
-    edgeSerializer.serialize(buffer, key)
+    vertexSerializer.serialize(buffer, key)
     buffer
   }
 

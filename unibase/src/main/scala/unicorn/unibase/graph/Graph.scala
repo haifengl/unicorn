@@ -24,7 +24,7 @@ import unicorn.json._
 import unicorn.oid.LongIdGenerator
 import unicorn.unibase.UpdateOps
 import unicorn.unibase.graph.Direction._
-import unicorn.util.Logging
+import unicorn.util.{ByteArray, Logging}
 
 /** Graphs are mathematical structures used to model pairwise relations
   * between objects. A graph is made up of vertices (nodes) which are
@@ -67,18 +67,29 @@ import unicorn.util.Logging
   *
   * @author Haifeng Li
   */
-class ReadOnlyGraph(val table: BigTable, documentVertexTable: BigTable) {
+class Graph(val table: BigTable, vertexKeyTable: BigTable) extends UpdateOps with Logging {
 
   import unicorn.unibase.$id
 
   /** Graph serializer. */
   val serializer = new GraphSerializer()
 
+  /** For UpdateOps. */
+  override val valueSerializer = serializer.vertexSerializer
+
+  /** Returns the column family of a property. */
+  override def familyOf(field: String): String = GraphVertexColumnFamily
+
   /** The column qualifier of \$id field. */
   val idColumnQualifier = serializer.vertexSerializer.str2PathBytes($id)
 
   /** The graph name. */
   val name = table.name
+
+  override def key(id: JsValue): Array[Byte] = {
+    require(id.isInstanceOf[JsLong], "Graph vertex id must be 64-bit JsLong")
+    serializer.serialize(id.asInstanceOf[JsLong].value)
+  }
 
   /** Cache of vertex string key to long id. */
   private[unicorn] val keyMap = collection.mutable.Map[String, Long]()
@@ -112,27 +123,27 @@ class ReadOnlyGraph(val table: BigTable, documentVertexTable: BigTable) {
 
   /** Returns a vertex by its string key. */
   def apply(key: String, direction: Direction): Vertex = {
-    val _id = id(key)
-    require(_id.isDefined, s"Vertex $key doesn't exist")
-    apply(_id.get, direction)
+    val id = idOf(key)
+    require(id.isDefined, s"Vertex $key doesn't exist")
+    apply(id.get, direction)
   }
 
-  /** Returns the vertex id of a document vertex.
-    * Throws exception if the vertex doesn't exist.
-    */
-  def id(table: String, key: JsValue, tenant: JsValue = JsUndefined): Option[Long] = {
-    val _id = documentVertexTable(serializer.serialize(table, tenant, key), GraphVertexColumnFamily, name)
-    _id.map(ByteBuffer.wrap(_).getLong)
+  private def rowKeyOf(key: String): ByteArray = {
+    serializer.serialize(key)
+  }
+
+  private def idColumn(key: String): Option[ByteArray] = {
+    vertexKeyTable(rowKeyOf(key), GraphVertexColumnFamily, idColumnQualifier)
   }
 
   /** Translates a vertex string key to 64 bit id. */
-  def id(key: String): Option[Long] = {
-    val _id = keyMap.get(key)
-    if (_id.isDefined) _id
-    else {
-      val _id = id(name, key)
-      if (_id.isDefined) keyMap(key) = _id.get
-      _id
+  def idOf(key: String): Option[Long] = {
+    keyMap.get(key) match {
+      case id @ Some(_) => id
+      case None =>
+        val id = idColumn(key).map(ByteBuffer.wrap(_).getLong)
+        if (id.isDefined) keyMap(key) = id.get
+        id
     }
   }
 
@@ -144,14 +155,7 @@ class ReadOnlyGraph(val table: BigTable, documentVertexTable: BigTable) {
 
   /** Returns true if the vertex exists. */
   def contains(key: String): Boolean = {
-    documentVertexTable(serializer.serialize(name, JsUndefined, key), GraphVertexColumnFamily, name).isDefined
-  }
-
-  /** Returns the vertex of a document. */
-  def apply(table: String, key: JsValue, tenant: JsValue = JsUndefined, direction: Direction = Both): Vertex = {
-    val _id = id(table, key, tenant)
-    require(_id.isDefined, s"document vertex ($table, $key, $tenant) doesn't exist")
-    apply(_id.get)
+    idColumn(key).isDefined
   }
 
   /** Returns the edge between `from` and `to` with given label. */
@@ -175,25 +179,6 @@ class ReadOnlyGraph(val table: BigTable, documentVertexTable: BigTable) {
   def v(id: Long): GremlinVertices = {
     val g = traversal
     g.v(id)
-  }
-}
-
-/** Graph with update operators.
-  *
-  * @param idgen 64-bit ID generator for vertex id.
-  */
-class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: LongIdGenerator) extends ReadOnlyGraph(table, documentVertexTable) with UpdateOps with Logging {
-  import unicorn.unibase.{$id, $tenant}
-
-  /** For UpdateOps. */
-  override val valueSerializer = serializer.vertexSerializer
-
-  /** Returns the column family of a property. */
-  override def familyOf(field: String): String = GraphVertexColumnFamily
-
-  override def key(id: JsValue): Array[Byte] = {
-    require(id.isInstanceOf[JsLong], "Graph vertex id must be 64-bit JsLong")
-    serializer.serialize(id.asInstanceOf[JsLong].value)
   }
 
   /** Shortcut to addVertex. Returns the vertex properties object. */
@@ -269,9 +254,10 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
     * ID generator must be set up.
     *
     * @param properties Any vertex property data.
+    * @param idgen 64-bit ID generator for vertex id.
     * @return Vertex ID.
     */
-  def addVertex(properties: JsObject): Long = {
+  def addVertex(properties: JsObject)(implicit idgen: LongIdGenerator): Long = {
     val id = idgen.next
     addVertex(id, properties)
     id
@@ -284,9 +270,11 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
     * string key later. The string key will also be the
     * vertex property `label`.
     *
-    * @return the 64 bit vertex id. */
-  def addVertex(key: String): Long = {
-    addVertex(name, key, properties = JsObject("key" -> JsString(key)))
+    * @param idgen 64-bit ID generator for vertex id.
+    * @return the 64 bit vertex id.
+    */
+  def addVertex(key: String)(implicit idgen: LongIdGenerator): Long = {
+    addVertex(key, properties = JsObject($key -> JsString(key)))
   }
 
   /** Adds a vertex with a string key. Many existing graphs
@@ -296,9 +284,11 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
     * string key later. The string key will also be the
     * vertex property `label`.
     *
-    * @return the 64 bit vertex id. */
-  def addVertex(key: String, label: String): Long = {
-    addVertex(name, key, properties = JsObject("key" -> key, "label" -> label))
+    * @param idgen 64-bit ID generator for vertex id.
+    * @return the 64 bit vertex id.
+    */
+  def addVertex(key: String, label: String)(implicit idgen: LongIdGenerator): Long = {
+    addVertex(key, properties = JsObject($key -> key, $label -> label))
   }
 
   /** Adds a vertex with a string key. Many existing graphs
@@ -309,35 +299,16 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
     * properties as `label` in case that properties object
     * already includes such a property.
     *
-    * @return the 64 bit vertex id. */
-  def addVertex(key: String, properties: JsObject): Long = {
-    val id = addVertex(name, key, properties = properties)
-    keyMap(key) = id
-    id
-  }
-
-  /** Creates a new vertex corresponding to a document in
-    * another table with automatic generated ID.
-    * ID generator must be set up.
-    *
-    * @param table The table of name of document.
-    * @param key The document id.
-    * @param tenant The tenant id of document if the table is multi-tenanted.
-    * @param properties Any vertex property data.
-    * @return Vertex ID.
+    * @param idgen 64-bit ID generator for vertex id.
+    * @return the 64 bit vertex id.
     */
-  def addVertex(table: String, key: JsValue, tenant: JsValue = JsUndefined, properties: JsObject = JsObject()): Long = {
-    require(documentVertexTable(serializer.serialize(table, tenant, key), GraphVertexColumnFamily, name).isEmpty, s"Document vertex ($table, $key, $tenant) exists.")
+  def addVertex(key: String, properties: JsObject)(implicit idgen: LongIdGenerator): Long = {
+    require(idColumn(key).isEmpty, s"Vertex $key exists.")
+
     val id = idgen.next
-
-    properties($doc) = JsObject(
-      $table -> table,
-      $id -> key,
-      $tenant -> tenant
-    )
-
     addVertex(id, properties)
-    documentVertexTable(serializer.serialize(table, tenant, key), GraphVertexColumnFamily, name) = serializer.serialize(id)
+    vertexKeyTable(serializer.serialize(key), GraphVertexColumnFamily, idColumnQualifier) = serializer.serialize(id)
+    keyMap(key) = id
 
     id
   }
@@ -346,9 +317,9 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
   def deleteVertex(id: Long): Unit = {
     val vertex = apply(id)
 
-    val doc = vertex.properties($doc)
-    if (doc != JsUndefined) {
-      documentVertexTable.delete(serializer.serialize(doc($table), doc($tenant), doc($id)), GraphVertexColumnFamily, name)
+    vertex.properties($key) match {
+      case JsString(key) => vertexKeyTable.delete(serializer.serialize(key), GraphVertexColumnFamily, idColumnQualifier)
+      case _ => ()
     }
 
     vertex.inE.foreach { case (label, edges) =>
@@ -357,16 +328,16 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
       }
     }
 
-    val key = serializer.serialize(id)
-    table.delete(key)
+    table.delete(serializer.serialize(id))
   }
 
-  def deleteVertex(table: String, key: JsValue, tenant: JsValue = JsUndefined): Unit = {
-    val _id = id(table, key, tenant)
-    require(_id.isDefined, s"document vertex ($table, $key, $tenant) doesn't exist")
+  /** Deletes a vertex and all associated edges. */
+  def deleteVertex(key: String): Unit = {
+    val id = idOf(key)
+    require(id.isDefined, s"Vertex $key doesn't exist")
 
-    deleteVertex(_id.get)
-    documentVertexTable.delete(serializer.serialize(table, tenant, key), GraphVertexColumnFamily, name)
+    deleteVertex(id.get)
+    vertexKeyTable.delete(serializer.serialize(key), GraphVertexColumnFamily, idColumnQualifier)
   }
 
   /** Adds a directed edge. If the edge exists, the associated data will be overwritten.
@@ -408,19 +379,19 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
 
   /** Adds an edge with the string key of vertices.
     * Automatically add the vertex if it doesn't exist. */
-  def addEdge(from: String, to: String): Unit = {
+  def addEdge(from: String, to: String)(implicit idgen: LongIdGenerator): Unit = {
     addEdge(from, "", to, JsNull)
   }
 
   /** Adds an edge with the string key of vertices. */
-  def addEdge(from: String, label: String, to: String): Unit = {
+  def addEdge(from: String, label: String, to: String)(implicit idgen: LongIdGenerator): Unit = {
     addEdge(from, label, to, JsNull)
   }
 
   /** Adds an edge with the string key of vertices. */
-  def addEdge(from: String, label: String, to: String, properties: JsValue): Unit = {
-    val fromId = id(from).getOrElse(addVertex(from))
-    val toId = id(to).getOrElse(addVertex(to))
+  def addEdge(from: String, label: String, to: String, properties: JsValue)(implicit idgen: LongIdGenerator): Unit = {
+    val fromId = idOf(from).getOrElse(addVertex(from))
+    val toId = idOf(to).getOrElse(addVertex(to))
     addEdge(fromId, label, toId, properties)
   }
 
@@ -441,9 +412,9 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
 
   /** Deletes an edge with the string key of vertices. */
   def deleteEdge(from: String, label: String, to: String): Unit = {
-    val fromId = id(from)
+    val fromId = idOf(from)
     require(fromId.isDefined, s"Vertex $from doesn't exist.")
-    val toId = id(to)
+    val toId = idOf(to)
     require(toId.isDefined, s"Vertex $to doesn't exist.")
     deleteEdge(fromId.get, label, toId.get)
   }
@@ -463,7 +434,7 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
     * @param weight if true, the third optional element is the edge weight.
     *              Otherwise, it is the edge label.
     */
-  def csv(file: String, separator: String = "\\s+", comment: String = "#", longVertexId: Boolean = false, weight: Boolean = false): Unit = {
+  def csv(file: String, separator: String = "\\s+", comment: String = "#", longVertexId: Boolean = false, weight: Boolean = false)(implicit idgen: LongIdGenerator): Unit = {
     Source.fromFile(file).getLines.foreach { line =>
       if (!line.startsWith(comment)) {
         val tokens = line.split("\\s+", 3)
@@ -477,11 +448,10 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
           if (weight) ("", JsDouble(tokens(2).toDouble)) else (tokens(2), JsNull)
         }
 
-        if (longVertexId) {
+        if (longVertexId)
           addEdge(tokens(0).toLong, label, tokens(1).toLong, data)
-        } else {
+        else
           addEdge(tokens(0), label, tokens(1), data)
-        }
       }
     }
   }
@@ -532,7 +502,7 @@ class Graph(override val table: BigTable, documentVertexTable: BigTable, idgen: 
     *             If not provided, the system will guess the format based
     *             on file extensions. See details at [[https://jena.apache.org/documentation/io/ Jena]]
     */
-  def rdf(uri: String, lang: Option[String] = None): Unit = {
+  def rdf(uri: String, lang: Option[String] = None)(implicit idgen: LongIdGenerator): Unit = {
     import java.util.concurrent.Executors
     import scala.collection.JavaConversions._
     import org.apache.jena.graph.Triple

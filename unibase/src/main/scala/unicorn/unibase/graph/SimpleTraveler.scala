@@ -32,7 +32,7 @@ import Direction._
   *
   * @author Haifeng Li
   */
-class SimpleTraveler(val graph: ReadOnlyGraph, val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler {
+class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler {
   /** The color mark if a vertex was already visited. */
   private val mark = collection.mutable.Map[Long, VertexColor]().withDefaultValue(White)
 
@@ -67,14 +67,14 @@ class SimpleTraveler(val graph: ReadOnlyGraph, val relationships: Set[String] = 
   }
 
   override def vertex(key: String): Vertex = {
-    val _id = id(key)
-    require(_id.isDefined, s"Vertex $key doesn't exist")
-    vertex(_id.get)
+    val id = idOf(key)
+    require(id.isDefined, s"Vertex $key doesn't exist")
+    vertex(id.get)
   }
 
   /** Translates a vertex string key to 64 bit id. */
-  override def id(key: String): Option[Long] = {
-    graph.id(key)
+  override def idOf(key: String): Option[Long] = {
+    graph.idOf(key)
   }
 
   override def color(id: Long): VertexColor = mark(id)

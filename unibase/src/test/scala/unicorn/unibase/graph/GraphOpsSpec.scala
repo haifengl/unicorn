@@ -34,6 +34,8 @@ class GraphOpsSpec extends Specification with BeforeAfterAll {
   val db = new Unibase(bigtable)
   val graphName = "unicorn_unibase_graph_test"
 
+  implicit val snowflake = new Snowflake(0)
+
   var saturn = 0L
   var sky = 0L
   var sea = 0L
@@ -50,7 +52,7 @@ class GraphOpsSpec extends Specification with BeforeAfterAll {
   override def beforeAll = {
     db.createGraph(graphName)
 
-    val gods = db.graph(graphName, new Snowflake(0))
+    val gods = db.graph(graphName)
 
     saturn = gods.addVertex(json"""{"label": "titan", "name": "saturn", "age": 10000}""")
     sky = gods.addVertex(json"""{"label": "location", "name": "sky"}""")

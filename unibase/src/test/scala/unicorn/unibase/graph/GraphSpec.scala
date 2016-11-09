@@ -34,6 +34,8 @@ class GraphSpec extends Specification with BeforeAfterAll {
   val db = new Unibase(bigtable)
   val graphName = "unicorn_unibase_graph_test"
 
+  implicit val snowflake = new Snowflake(0)
+
   var saturn = 0L
   var sky = 0L
   var sea = 0L
@@ -50,7 +52,7 @@ class GraphSpec extends Specification with BeforeAfterAll {
   override def beforeAll = {
     db.createGraph(graphName)
 
-    val gods = db.graph(graphName, new Snowflake(0))
+    val gods = db.graph(graphName)
 
     saturn = gods.addVertex(json"""{"label": "titan", "name": "saturn", "age": 10000}""")
     sky = gods.addVertex(json"""{"label": "location", "name": "sky"}""")
@@ -103,7 +105,7 @@ class GraphSpec extends Specification with BeforeAfterAll {
       vertex.outE.isEmpty === true
     }
     "update vertex" in {
-      val gods = db.graph(graphName, new Snowflake(0))
+      val gods = db.graph(graphName)
       val update = json"""
                           {
                             "_id": $alcmene,
@@ -121,7 +123,7 @@ class GraphSpec extends Specification with BeforeAfterAll {
       vertex.properties === json"""{"_id": $alcmene, "label": "human", "name": "alcmene", "gender": "female"}"""
     }
     "delete vertex" in {
-      val gods = db.graph(graphName, new Snowflake(0))
+      val gods = db.graph(graphName)
       gods.deleteVertex(alcmene)
       gods(alcmene) should throwA[IllegalArgumentException]
 
@@ -129,27 +131,26 @@ class GraphSpec extends Specification with BeforeAfterAll {
       vertex.id === hercules
       vertex.outE("mother") should throwA[NoSuchElementException]
     }
-    "add document vertex" in {
-      val gods = db.graph(graphName, new Snowflake(0))
-      db.createTable("doc_vertex_test")
-      val table = db("doc_vertex_test")
-      val key = table.upsert(json"""{"name": "Tao"}""")
-      val docv = gods.addVertex("doc_vertex_test", key)
-      val vertex = gods(docv)
-      vertex.id === docv
-      vertex.properties === json"""{"_id": $docv, "_doc": {"_table": "doc_vertex_test", "_id": "$key"}}"""
+    "add string vertex" in {
+      val gods = db.graph(graphName)
+      val key = "abc"
+      val v = gods.addVertex("abc")
+      val vertex = gods(v)
+      vertex.id === v
+      vertex.properties === json"""{"_id": $v, "_key": "$key"}"""
       vertex.inE.isEmpty === true
       vertex.outE.isEmpty === true
     }
-    "delete document vertex" in {
-      val gods = db.graph(graphName, new Snowflake(0))
-      val table = db("doc_vertex_test")
-      val key = table.upsert(json"""{"name": "Tao"}""")
-      val docv = gods.addVertex("doc_vertex_test", key)
-      gods.deleteVertex("doc_vertex_test", key)
+    "delete string vertex" in {
+      val gods = db.graph(graphName)
+      val key = "abc"
+      gods.deleteVertex(key)
 
-      gods(docv) should throwA[IllegalArgumentException]
-      gods("doc_vertex_test", key) should throwA[IllegalArgumentException]
+      val v = gods.addVertex("abc")
+      gods.deleteVertex(v)
+
+      gods(v) should throwA[IllegalArgumentException]
+      gods(key) should throwA[IllegalArgumentException]
     }
     "get edge" in {
       val gods = db.graph(graphName)
@@ -158,7 +159,7 @@ class GraphSpec extends Specification with BeforeAfterAll {
       gods(neptune, "brother", jupiter) === Some(JsNull)
     }
     "delete edge" in {
-      val gods = db.graph(graphName, new Snowflake(0))
+      val gods = db.graph(graphName)
       gods.deleteEdge(neptune, "lives", sea)
       gods(neptune, "lives", sea) === None
     }

@@ -20,10 +20,10 @@ package unicorn.unibase
  * @author Haifeng Li
  */
 package object graph {
-  val $doc = "_doc"
-  val $table = "_table"
+  private[unicorn] val GraphVertexKeyTableSuffix = "_vertex_key"
+  private[unicorn] val $key  = "_key"
+  private[unicorn] val $label  = "_label"
 
-  private[unicorn] val GraphDocumentVertexTable = "unicorn_graph_doc_vertex"
   private[unicorn] val GraphVertexColumnFamily  = "vertex"
   private[unicorn] val GraphInEdgeColumnFamily  = "in"
   private[unicorn] val GraphOutEdgeColumnFamily = "out"

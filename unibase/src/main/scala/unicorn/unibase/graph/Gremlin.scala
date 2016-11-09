@@ -28,7 +28,7 @@ class Gremlin(val traveler: Traveler) {
   def v(id: Array[Long]): GremlinVertices = new GremlinVertices(traveler, id)
   def v(key: String*): GremlinVertices = {
     val id = key.map { key =>
-      val v = traveler.id(key)
+      val v = traveler.idOf(key)
       require(v.isDefined, s"Vertex $key doesn't exist")
       v.get
     }

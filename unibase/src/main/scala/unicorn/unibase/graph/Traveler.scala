@@ -62,7 +62,7 @@ import VertexColor._
   */
 trait Traveler {
   /** Translates a vertex string key to 64 bit id. */
-  def id(key: String): Option[Long]
+  def idOf(key: String): Option[Long]
 
   /** Returns the vertex of given ID. */
   def vertex(id: Long): Vertex

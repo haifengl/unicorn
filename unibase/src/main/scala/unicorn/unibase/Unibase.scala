@@ -17,9 +17,8 @@
 package unicorn.unibase
 
 import unicorn.bigtable.{Column, BigTable, Database}
-import unicorn.unibase.graph.{Graph, ReadOnlyGraph}
+import unicorn.unibase.graph.Graph
 import unicorn.json._
-import unicorn.oid.{LongIdGenerator, Snowflake}
 import unicorn.util._
 
 /** A Unibase is a database of documents. A collection of documents are called table.
@@ -27,10 +26,14 @@ import unicorn.util._
   * @author Haifeng Li
   */
 class Unibase[+T <: BigTable](db: Database[T]) {
-  import unicorn.unibase.graph.GraphDocumentVertexTable
+  import unicorn.unibase.graph.GraphVertexKeyTableSuffix
   import unicorn.unibase.graph.GraphVertexColumnFamily
   import unicorn.unibase.graph.GraphInEdgeColumnFamily
   import unicorn.unibase.graph.GraphOutEdgeColumnFamily
+
+  private def graphVertexKeyTable(name: String): String = {
+    name + GraphVertexKeyTableSuffix
+  }
 
   /** Returns a document table.
     * @param name The name of table.
@@ -44,37 +47,8 @@ class Unibase[+T <: BigTable](db: Database[T]) {
     *
     * @param name The name of graph table.
     */
-  def graph(name: String): ReadOnlyGraph = {
-    new ReadOnlyGraph(db(name), db(GraphDocumentVertexTable))
-  }
-
-  /** Returns a graph with Snowflake ID generator.
-    * The Snowflake worker id is coordinated by zookeeper.
-    *
-    * @param name The name of graph table.
-    * @param zookeeper ZooKeeper connection string.
-    */
-  def graph(name: String, zookeeper: String): Graph = {
-    graph(name, zookeeper, s"/unicorn/snowflake/graph/$name")
-  }
-
-  /** Returns a graph with Snowflake ID generator.
-    * The Snowflake worker id is coordinated by zookeeper.
-    *
-    * @param name The name of graph table.
-    * @param zookeeper ZooKeeper connection string.
-    * @param group The ZooKeeper group node of Snowflake workers.
-    */
-  def graph(name: String, zookeeper: String, group: String): Graph = {
-    graph(name, Snowflake(zookeeper, group))
-  }
-
-  /** Returns a graph.
-    * @param name The name of graph table.
-    * @param idgen Vertex ID generator.
-    */
-  def graph(name: String, idgen: LongIdGenerator): Graph = {
-    new Graph(db(name), db(GraphDocumentVertexTable), idgen)
+  def graph(name: String): Graph = {
+    new Graph(db(name), db(graphVertexKeyTable(name)))
   }
 
   /** Creates a document table.
@@ -113,16 +87,17 @@ class Unibase[+T <: BigTable](db: Database[T]) {
     * @param name the name of graph table.
     */
   def createGraph(name: String): Unit = {
+    val vertexKeyTable = graphVertexKeyTable(name)
+    require(!db.tableExists(vertexKeyTable), s"Vertex key table $vertexKeyTable already exists")
+
     val table = db.createTable(name,
       GraphVertexColumnFamily,
       GraphInEdgeColumnFamily,
       GraphOutEdgeColumnFamily)
     table.close
 
-    if (!db.tableExists(GraphDocumentVertexTable)) {
-      val table = db.createTable(GraphDocumentVertexTable, GraphVertexColumnFamily)
-      table.close
-    }
+    val keyTable = db.createTable(vertexKeyTable, GraphVertexColumnFamily)
+    keyTable.close
   }
 
   /** Drops a document table. All column families in the table will be dropped. */
@@ -134,6 +109,7 @@ class Unibase[+T <: BigTable](db: Database[T]) {
   /** Drops a graph. All tables related to the graph will be dropped. */
   def dropGraph(name: String): Unit = {
     db.dropTable(name)
+    db.dropTable(graphVertexKeyTable(name))
   }
 
   /** Truncates a table
@@ -159,7 +135,7 @@ class Unibase[+T <: BigTable](db: Database[T]) {
 
   /** Returns the list of tables. */
   def tables: Set[String] = {
-    db.tables.filter(_ != GraphDocumentVertexTable)
+    db.tables.filter(!_.endsWith(GraphVertexKeyTableSuffix))
   }
 }
 
