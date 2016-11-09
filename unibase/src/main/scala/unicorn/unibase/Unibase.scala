@@ -31,7 +31,7 @@ class Unibase[+T <: BigTable](db: Database[T]) {
   import unicorn.unibase.graph.GraphInEdgeColumnFamily
   import unicorn.unibase.graph.GraphOutEdgeColumnFamily
 
-  private def graphVertexKeyTable(name: String): String = {
+  private[unicorn] def graphVertexKeyTable(name: String): String = {
     name + GraphVertexKeyTableSuffix
   }
 
