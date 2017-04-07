@@ -45,9 +45,7 @@ import unicorn.util.{ByteArray, Logging}
   * The edges also have associated labels denoting the relationships,
   * which are important in a multigraph.
   *
-  * Unicorn supports directed property multigraphs. Documents from different
-  * tables can be added as vertices to a multigraph. It is also okay to add
-  * vertices without corresponding to documents. Each relationship/edge
+  * Unicorn supports directed property multigraphs. Each relationship/edge
   * has a label and optional data (any valid JsValue, default value JsInt(1)).
   *
   * Unicorn stores graphs in adjacency lists. That is, a graph
@@ -64,6 +62,7 @@ import unicorn.util.{ByteArray, Logging}
   * for a given relationship in constant time.
   *
   * @param table Graph adjacency list table.
+  * @param vertexKeyTable The table/map of string keys to integer IDs.
   *
   * @author Haifeng Li
   */
