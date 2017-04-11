@@ -430,6 +430,10 @@ case class JsArray(elements: collection.mutable.ArrayBuffer[JsValue]) extends Js
   override def toIterator: Iterator[JsValue] = elements.toIterator
   override def toStream: Stream[JsValue] = elements.toStream
 
+  // Traversable.toString overloads JsValue.toString.
+  // Get it back.
+  override def toString = compactPrint
+
   override def size: Int = elements.size
 
   override def equals(o: Any) = o match {
