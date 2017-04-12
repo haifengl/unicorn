@@ -57,6 +57,32 @@ class JsValueSpec extends Specification {
       json.store.bicycle.color = "green"
       json.store.bicycle.color === JsString("green")
     }
+    "JsObject deep merge" in {
+      val scala = json"""
+        {
+          "name": "scala",
+          "version": "2.11.8",
+          "features": {
+            "functional": true,
+            "imperative": true
+          }
+        }
+      """
+
+      val java = json"""
+        {
+          "name": "java",
+          "features": {
+            "functional": false,
+            "imperative": true,
+            "lambda": true
+          },
+          "bugs": 213
+        }
+      """
+
+      (scala ++= java) === json"""{"name": "java", "version": "2.11.8", "features": { "functional": false, "imperative": true, "lambda": true}, "bugs": 213}"""
+    }
     "JsArray update" in {
       val json = JsonParser(jsonSource)
       json("store")("book")(0)("author") = "Dude"

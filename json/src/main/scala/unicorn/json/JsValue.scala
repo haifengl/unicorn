@@ -411,6 +411,23 @@ case class JsObject(fields: collection.mutable.Map[String, JsValue]) extends JsV
     else
       None
   }
+
+  /** Deep merge another object into this object.
+   *
+   * @param that the object to merge into this object.
+   * @return the merged object
+   */
+  def ++=(that: JsObject): JsObject = {
+    that.fields foreach {
+      case (key, value) if fields.contains(key) =>
+        (fields(key), value) match {
+          case (a: JsObject, b: JsObject) => a ++= b
+          case _ => fields(key) = value
+        }
+      case (key, value) => fields(key) = value
+    }
+    this
+  }
 }
 
 object JsObject {
@@ -481,7 +498,7 @@ case class JsArray(elements: collection.mutable.ArrayBuffer[JsValue]) extends Js
   override def updateDynamic(index: Int)(value: JsValue): JsValue = update(index, value)
 
   /** Appends a single element to this array and returns
-   * the identity of the array. It takes constant amortized time.
+   *  the identity of the array. It takes constant amortized time.
    *
    * @param elem  the element to append.
    * @return      the updated array.
