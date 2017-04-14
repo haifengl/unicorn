@@ -30,8 +30,8 @@ import unicorn.util.ByteArray
   *  - The size limitation. The id of document serves as the row key in the underlying
   *    BigTable implementation. Most BigTable implementations have the upper limit of
   *    row key (often as 64KB).
-  *  - For compound primary key (i.e. multiple fields), it is better use Array instead
-  *    of Object as the container because it maintains the order of fields, which is
+  *  - For compound primary key (i.e. multiple fields), it is better use JsArray instead
+  *    of JsObject as the container because it maintains the order of fields, which is
   *    important in the scan operations. When serializing an Object, the order of fields
   *    may be undefined (because of hashing) or simply ascending in field name.
   *  - The fields of compound primary key should be fixed size. In database with schema
