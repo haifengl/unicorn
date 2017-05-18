@@ -16,6 +16,11 @@
 
 package unicorn
 
+import java.util.{Date, UUID}
+
+import unicorn.json.{JsBinary, JsDate, JsDouble, JsInt, JsLong, JsObjectId, JsString, JsUUID}
+import unicorn.oid.BsonObjectId
+
 /**
   * @author Haifeng Li
   */
@@ -32,4 +37,22 @@ package object unibase {
   private[unibase] val MetaTableColumnFamily = "meta"
 
   private[unibase] val DefaultLocalityField = "default_locality"
+
+  implicit def int2RowKey(x: Int) = IntRowKey(JsInt(x))
+  implicit def long2RowKey(x: Long) = LongRowKey(JsLong(x))
+  implicit def double2RowKey(x: Double) = DoubleRowKey(JsDouble(x))
+  implicit def string2RowKey(x: String) = StringRowKey(JsString(x))
+  implicit def date2RowKey(x: Date) = DateRowKey(JsDate(x))
+  implicit def uuid2RowKey(x: UUID) = UuidRowKey(JsUUID(x))
+  implicit def objectId2RowKey(x: BsonObjectId) = ObjectIdRowKey(JsObjectId(x))
+  implicit def byteArray2JsValue(x: Array[Byte]) = BinaryRowKey(JsBinary(x))
+
+  implicit def int2RowKey(x: JsInt) = IntRowKey(x)
+  implicit def long2RowKey(x: JsLong) = LongRowKey(x)
+  implicit def double2RowKey(x: JsDouble) = DoubleRowKey(x)
+  implicit def string2RowKey(x: JsString) = StringRowKey(x)
+  implicit def date2RowKey(x: JsDate) = DateRowKey(x)
+  implicit def uuid2RowKey(x: JsUUID) = UuidRowKey(x)
+  implicit def objectId2RowKey(x: JsObjectId) = ObjectIdRowKey(x)
+  implicit def byteArray2JsValue(x: JsBinary) = BinaryRowKey(x)
 }
