@@ -78,6 +78,12 @@ class ColumnarJsonSerializer(
     buffer
   }
 
+  def serialize(json: JsDecimal): Array[Byte] = {
+    buffer.clear
+    serialize(buffer, json, None)
+    buffer
+  }
+
   def serialize(json: JsString): Array[Byte] = {
     buffer.clear
     serialize(buffer, json, None)
@@ -161,6 +167,7 @@ class ColumnarJsonSerializer(
       case x: JsLong => map(jsonPath) = serialize(x)
       case x: JsCounter => map(jsonPath) = serialize(x)
       case x: JsDouble => map(jsonPath) = serialize(x)
+      case x: JsDecimal => map(jsonPath) = serialize(x)
       case x: JsString => map(jsonPath) = serialize(x)
       case x: JsDate => map(jsonPath) = serialize(x)
       case x: JsTime => map(jsonPath) = serialize(x)
@@ -194,6 +201,7 @@ class ColumnarJsonSerializer(
       case TYPE_INT64     => long(buffer)
       case END_OF_DOCUMENT | TYPE_MINKEY if bytes.get.length == 8 => JsCounter(buffer.getLong(0)) // hacking counter
       case TYPE_DOUBLE    => double(buffer)
+      case TYPE_BIGDECIMAL=> decimal(buffer)
       case TYPE_DATE      => date(buffer)
       case TYPE_TIME      => time(buffer)
       case TYPE_DATETIME  => datetime(buffer)

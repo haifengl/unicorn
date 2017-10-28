@@ -30,20 +30,23 @@ class CompactPrinterSpec extends Specification {
     "print JsFalse to 'false'" in {
       CompactPrinter(JsFalse) mustEqual "false"
     }
-    "print JsNumber(0) to '0'" in {
+    "print JsInt(0) to '0'" in {
       CompactPrinter(JsInt(0)) mustEqual "0"
     }
-    "print JsNumber(1.23) to '1.23'" in {
+    "print JsLong(12435234235235235) to '12435234235235235'" in {
+      CompactPrinter(JsLong(12435234235235235L)) mustEqual "12435234235235235"
+    }
+    "print JsDouble(1.23) to '1.23'" in {
       CompactPrinter(JsDouble(1.23)) mustEqual "1.23"
     }
-    "print JsNumber(1.23) to '1.23'" in {
-      CompactPrinter(JsDouble(1.23)) mustEqual "1.23"
-    }
-    "print JsNumber(-1E10) to '-1E10'" in {
+    "print JsDouble(-1E10) to '-1E10'" in {
       CompactPrinter(JsDouble(-1E10)) mustEqual "-1.0E10"
     }
-    "print JsNumber(12.34e-10) to '12.34e-10'" in {
+    "print JsDouble(12.34e-10) to '12.34e-10'" in {
       CompactPrinter(JsDouble(12.34e-10)) mustEqual "1.234E-9"
+    }
+    "print JsDecimal(12345678912345012412.1243243253252352352352352) to '12345678912345012412.1243243253252352352352352'" in {
+      CompactPrinter(JsDecimal("12345678912345012412.1243243253252352352352352")) mustEqual """"12345678912345012412.1243243253252352352352352""""
     }
     "print JsString(\"xyz\") to \"xyz\"" in {
       CompactPrinter(JsString("xyz")) mustEqual "\"xyz\""

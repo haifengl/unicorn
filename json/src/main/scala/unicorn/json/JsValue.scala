@@ -19,6 +19,7 @@ package unicorn.json
 import java.time.{LocalDate, LocalTime, LocalDateTime, ZoneOffset}
 import java.sql.Timestamp
 import java.util.{Date, UUID}
+import java.math.BigDecimal
 import scala.language.dynamics
 import scala.language.implicitConversions
 import unicorn.oid.BsonObjectId
@@ -123,6 +124,10 @@ sealed trait JsValue extends Dynamic {
     throw new UnsupportedOperationException
   }
 
+  def asDecimal: BigDecimal = {
+    throw new UnsupportedOperationException
+  }
+
   def asDate: LocalDate = {
     throw new UnsupportedOperationException
   }
@@ -217,6 +222,7 @@ case class JsInt(value: Int) extends JsValue with Ordered[JsInt] {
 
 object JsInt {
   val zero = JsInt(0)
+  val one = JsInt(1)
 }
 
 case class JsLong(value: Long) extends JsValue with Ordered[JsLong] {
@@ -243,6 +249,7 @@ case class JsLong(value: Long) extends JsValue with Ordered[JsLong] {
 
 object JsLong {
   val zero = JsLong(0L)
+  val one = JsLong(1L)
 }
 
 /** A counter is a 64 bit integer. The difference from JsLong
@@ -274,6 +281,7 @@ case class JsCounter(value: Long) extends JsValue with Ordered[JsCounter] {
 
 object JsCounter {
   val zero = JsCounter(0L)
+  val one = JsCounter(1L)
 }
 
 case class JsDouble(value: Double) extends JsValue with Ordered[JsDouble] {
@@ -295,6 +303,36 @@ case class JsDouble(value: Double) extends JsValue with Ordered[JsDouble] {
 
 object JsDouble {
   val zero = JsDouble(0.0)
+  val one = JsDouble(1.0)
+}
+
+case class JsDecimal(value: BigDecimal) extends JsValue with Ordered[JsDecimal] {
+  override def toString = value.toPlainString
+  override def equals(o: Any) = o match {
+    case that: BigDecimal => value == that
+    case JsDecimal(that) => value == that
+    case _ => false
+  }
+  override def asBoolean: Boolean = value == BigDecimal.ZERO
+  override def asInt: Int = value.intValueExact
+  override def asLong: Long = value.longValueExact
+  override def asDouble: Double = value.doubleValue
+
+  override def compare(that: JsDecimal): Int = {
+    value.compareTo(that.value)
+  }
+}
+
+object JsDecimal {
+  val zero = JsDecimal(BigDecimal.ZERO)
+  val one = JsDecimal(BigDecimal.ONE)
+  /** Converts a string representation into a JsDecimal.
+    * The string representation consists of an optional sign,
+    * '+' ( '\u002B') or '-' ('\u002D'), followed by a sequence
+    * of zero or more decimal digits ("the integer"), optionally
+    * followed by a fraction, optionally followed by an exponent.
+    */
+  def apply(x: String): JsDecimal = JsDecimal(new BigDecimal(x))
 }
 
 case class JsString(value: String) extends JsValue with Ordered[JsString] {
@@ -308,6 +346,7 @@ case class JsString(value: String) extends JsValue with Ordered[JsString] {
   override def asInt: Int = Integer.parseInt(value)
   override def asLong: Long = java.lang.Long.parseLong(value)
   override def asDouble: Double = java.lang.Double.parseDouble(value)
+  override def asDecimal: BigDecimal = new BigDecimal(value)
   override def asDate: LocalDate = LocalDate.parse(value)
   override def asTime: LocalTime = LocalTime.parse(value)
   override def asDateTime: LocalDateTime = LocalDateTime.parse(value)
@@ -352,9 +391,9 @@ case class JsDate(value: LocalDate) extends JsValue with Ordered[JsDate] {
 
 object JsDate {
   /** Obtains an instance from the epoch day count. */
-  def apply(date: Long) = new JsDate(LocalDate.ofEpochDay(date))
+  def apply(date: Long): JsDate = new JsDate(LocalDate.ofEpochDay(date))
   /** The string must represent a valid date and is parsed using DateTimeFormatter.ISO_LOCAL_DATE. */
-  def apply(date: String) = new JsDate(LocalDate.parse(date))
+  def apply(date: String): JsDate = new JsDate(LocalDate.parse(date))
 }
 
 /** A time without a time-zone in the ISO-8601 calendar system,
@@ -394,9 +433,9 @@ case class JsTime(value: LocalTime) extends JsValue with Ordered[JsTime] {
 
 object JsTime {
   /** Obtains an instance from a nanos-of-day value. */
-  def apply(time: Long) = new JsTime(LocalTime.ofNanoOfDay(time))
+  def apply(time: Long): JsTime = new JsTime(LocalTime.ofNanoOfDay(time))
   /** The string must represent a valid time and is parsed using DateTimeFormatter.ISO_LOCAL_TIME. */
-  def apply(time: String) = new JsTime(LocalTime.parse(time))
+  def apply(time: String): JsTime = new JsTime(LocalTime.parse(time))
 }
 
 /** A date-time without a time-zone in the ISO-8601 calendar system,
@@ -434,11 +473,11 @@ case class JsDateTime(value: LocalDateTime) extends JsValue with Ordered[JsDateT
 
 object JsDateTime {
   /** Obtains an instance from a date and time. */
-  def apply(date: LocalDate, time: LocalTime) = new JsDateTime(LocalDateTime.of(date, time))
+  def apply(date: LocalDate, time: LocalTime): JsDateTime = new JsDateTime(LocalDateTime.of(date, time))
   /** Obtains an instance from a date and time. */
-  def apply(date: Long, time: Long) = new JsDateTime(LocalDateTime.of(LocalDate.ofEpochDay(date), LocalTime.ofNanoOfDay(time)))
+  def apply(date: Long, time: Long): JsDateTime = new JsDateTime(LocalDateTime.of(LocalDate.ofEpochDay(date), LocalTime.ofNanoOfDay(time)))
   /** The string must represent a valid date-time and is parsed using DateTimeFormatter.ISO_LOCAL_DATE_TIME. */
-  def apply(datetime: String) = new JsDateTime(LocalDateTime.parse(datetime))
+  def apply(datetime: String): JsDateTime = new JsDateTime(LocalDateTime.parse(datetime))
 }
 
 /** An SQL TIMESTAMP value. It adds the ability to hold the SQL TIMESTAMP
@@ -475,10 +514,10 @@ object JsTimestamp {
     *             A negative number is the number of milliseconds
     *             before January 1, 1970, 00:00:00 GMT.
     */
-  def apply(time: Long) = new JsTimestamp(new Timestamp(time))
+  def apply(time: Long): JsTimestamp = new JsTimestamp(new Timestamp(time))
 
   /** Converts a java.util.Date object to a JsTimestamp value. */
-  def apply(time: Date) = new JsTimestamp(new Timestamp(time.getTime))
+  def apply(time: Date): JsTimestamp = new JsTimestamp(new Timestamp(time.getTime))
 
   /** Converts a String object in JDBC timestamp escape format
     * to a JsTimestamp value.
@@ -487,7 +526,7 @@ object JsTimestamp {
     *             The fractional seconds may be omitted. The leading zero
     *             for mm and dd may also be omitted.
     */
-  def apply(time: String) = new JsTimestamp(Timestamp.valueOf(time))
+  def apply(time: String): JsTimestamp = new JsTimestamp(Timestamp.valueOf(time))
 }
 
 case class JsUUID(value: UUID) extends JsValue {

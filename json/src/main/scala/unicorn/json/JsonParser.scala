@@ -126,11 +126,22 @@ class JsonParser(input: ParserInput) {
         val s = String.valueOf(input.sliceCharArray(start, input.cursor))
         if (hasFrac || hasExp) {
           val n = s.toDouble
-          if (n == 0.0) JsDouble.zero else JsDouble(n)
+          n match {
+            case 0.0 => JsDouble.zero
+            case 1.0 => JsDouble.one
+            case _   => JsDouble(n)
+          }
         } else {
           if (hasLong) JsLong(s.substring(0, s.length-1).toLong)
           else if (hasCounter) JsCounter(s.substring(0, s.length-1).toLong)
-          else try { JsInt(s.toInt) } catch {
+          else try {
+            val n = s.toInt
+            n match {
+              case 0 => JsInt.zero
+              case 1 => JsInt.one
+              case _ => JsInt(n)
+            }
+          } catch {
             case _: NumberFormatException => JsLong(s.toLong)
           }
         }

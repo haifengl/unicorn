@@ -16,6 +16,7 @@
 
 package unicorn.json
 
+import java.math.{BigInteger, BigDecimal}
 import java.nio.ByteBuffer
 import unicorn.oid.BsonObjectId
 
@@ -48,10 +49,11 @@ trait BaseJsonSerializer extends JsonSerializer {
   val TYPE_INT32                  : Byte = 0x10
   val TYPE_MONGODB_TIMESTAMP      : Byte = 0x11 // Special internal type used by MongoDB.
   val TYPE_INT64                  : Byte = 0x12
-  val TYPE_DECIMAL                : Byte = 0x13
-  val TYPE_DATE                   : Byte = 0x20 // LocalDate
-  val TYPE_TIME                   : Byte = 0x21 // LocalTime
-  val TYPE_DATETIME               : Byte = 0x22 // LocalDateTime
+  val TYPE_DECIMAL128             : Byte = 0x13 // 128-bit IEEE 754-2008 decimal floating point
+  val TYPE_DATE                   : Byte = 0x20 // Java8 LocalDate
+  val TYPE_TIME                   : Byte = 0x21 // Java8 LocalTime
+  val TYPE_DATETIME               : Byte = 0x22 // Java8 LocalDateTime
+  val TYPE_BIGDECIMAL             : Byte = 0x23 // Java BigDecimal
   val TYPE_MINKEY                 : Byte = 0xFF.toByte
   val TYPE_MAXKEY                 : Byte = 0x7F
 
@@ -110,6 +112,16 @@ trait BaseJsonSerializer extends JsonSerializer {
     buffer.put(TYPE_DOUBLE)
     serialize(buffer, ename)
     buffer.putDouble(json.value)
+  }
+
+  def serialize(buffer: ByteBuffer, json: JsDecimal, ename: Option[String]): Unit = {
+    buffer.put(TYPE_BIGDECIMAL)
+    serialize(buffer, ename)
+    // We flip the leading bit so that negative values will
+    // sort before 0 in ASC order for bit strings. This is
+    // important as integers on JVM are all signed.
+    buffer.putLong(json.value.unscaledValue.longValue ^ 0x8000000000000000L)
+    buffer.putInt(json.value.scale)
   }
 
   def serialize(buffer: ByteBuffer, json: JsString, ename: Option[String]): Unit = {
@@ -197,6 +209,13 @@ trait BaseJsonSerializer extends JsonSerializer {
   def double(buffer: ByteBuffer): JsDouble = {
     val x = buffer.getDouble
     if (x == 0.0) JsDouble.zero else JsDouble(x)
+  }
+
+  def decimal(buffer: ByteBuffer): JsDecimal = {
+    val unscaledVal = buffer.getLong
+    val scale = buffer.getInt
+    // Remember to flip back the leading bit
+    JsDecimal(new BigDecimal(BigInteger.valueOf(unscaledVal ^ 0x8000000000000000L), scale))
   }
 
   def date(buffer: ByteBuffer): JsDate = {

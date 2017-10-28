@@ -35,6 +35,7 @@ trait JsonPrinter extends (JsValue => String) {
       case JsLong(x)     => sb.append(x)//.append('L')
       case JsCounter(x)  => sb.append(x)
       case JsDouble(x)   => sb.append(x)
+      case JsDecimal(x)  => sb.append('"').append(x.toPlainString).append('"')
       case JsDate(_) | JsTime(_) | JsDateTime(_) | JsTimestamp(_) => sb.append('"').append(x.toString).append('"')
       case JsBinary(x)   => sb.append('"').append(x.map("%02X" format _).mkString).append('"')
       case JsString(x)   => printString(x, sb)
