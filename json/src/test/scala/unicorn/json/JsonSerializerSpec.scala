@@ -57,9 +57,25 @@ class JsonSerializerSpec extends Specification {
       val serializer = new BsonSerializer
       serializer.deserialize(serializer.serialize(JsLong(1302806349000L))) === JsLong(1302806349000L)
     }
-    "serialize '2015-08-10T10:00:00.123Z'" in {
+    "serialize '2015-08-10'" in {
       val serializer = new BsonSerializer
-      serializer.deserialize(serializer.serialize(JsDate("2015-08-10T10:00:00.123Z"))) === JsDate("2015-08-10T10:00:00.123Z")
+      serializer.deserialize(serializer.serialize(JsDate("2015-08-10"))) === JsDate("2015-08-10")
+    }
+    "serialize '10:00:00'" in {
+      val serializer = new BsonSerializer
+      serializer.deserialize(serializer.serialize(JsTime("10:00:00"))) === JsTime("10:00:00")
+    }
+    "serialize '10:00:00.123'" in {
+      val serializer = new BsonSerializer
+      serializer.deserialize(serializer.serialize(JsTime("10:00:00.123"))) === JsTime("10:00:00.123")
+    }
+    "serialize '2015-08-10T10:00:00.123'" in {
+      val serializer = new BsonSerializer
+      serializer.deserialize(serializer.serialize(JsDateTime("2015-08-10T10:00:00.123"))) === JsDateTime("2015-08-10T10:00:00.123")
+    }
+    "serialize '2015-08-10 10:00:00.123'" in {
+      val serializer = new BsonSerializer
+      serializer.deserialize(serializer.serialize(JsTimestamp("2015-08-10 10:00:00.123"))) === JsTimestamp("2015-08-10 10:00:00.123")
     }
     "serialize 'CA761232-ED42-11CE-BACD-00AA0057B223'" in {
       val serializer = new BsonSerializer
@@ -110,9 +126,25 @@ class JsonSerializerSpec extends Specification {
       val serializer = new ColumnarJsonSerializer
       serializer.deserialize(serializer.serialize(JsLong(1302806349000L))) === JsLong(1302806349000L)
     }
-    "serialize '2015-08-10T10:00:00.123Z'" in {
+    "serialize '2015-08-10'" in {
       val serializer = new ColumnarJsonSerializer
-      serializer.deserialize(serializer.serialize(JsDate("2015-08-10T10:00:00.123Z"))) === JsDate("2015-08-10T10:00:00.123Z")
+      serializer.deserialize(serializer.serialize(JsDate("2015-08-10"))) === JsDate("2015-08-10")
+    }
+    "serialize '10:00:00'" in {
+      val serializer = new ColumnarJsonSerializer
+      serializer.deserialize(serializer.serialize(JsTime("10:00:00"))) === JsTime("10:00:00")
+    }
+    "serialize '10:00:00.123'" in {
+      val serializer = new ColumnarJsonSerializer
+      serializer.deserialize(serializer.serialize(JsTime("10:00:00.123"))) === JsTime("10:00:00.123")
+    }
+    "serialize '2015-08-10T10:00:00.123'" in {
+      val serializer = new ColumnarJsonSerializer
+      serializer.deserialize(serializer.serialize(JsDateTime("2015-08-10T10:00:00.123"))) === JsDateTime("2015-08-10T10:00:00.123")
+    }
+    "serialize '2015-08-10 10:00:00.123'" in {
+      val serializer = new ColumnarJsonSerializer
+      serializer.deserialize(serializer.serialize(JsTimestamp("2015-08-10 10:00:00.123"))) === JsTimestamp("2015-08-10 10:00:00.123")
     }
     "serialize 'CA761232-ED42-11CE-BACD-00AA0057B223'" in {
       val serializer = new ColumnarJsonSerializer

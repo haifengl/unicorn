@@ -54,13 +54,9 @@ class JsonParser(input: ParserInput) {
   private def `null`() = advance() && ch('u') && ch('l') && ws('l')
   private def `true`() = advance() && ch('r') && ch('u') && ws('e')
   private def parseString(s: String): JsValue = {
-    if (s.length == JsDate.formatLength) {
-      try {
-        JsDate(JsDate.format.parse(s))
-      } catch {
-        case _: java.text.ParseException => JsString(s)
-      }
-    } else if (s.length == JsObjectId.formatLength && JsObjectId.regex.pattern.matcher(s).matches) {
+    // Don't try to parse date/time/datetime/timestamp any more. The user can
+    // use asDate/asTime/asDateTime/asTimestamp on demand.
+    if (s.length == JsObjectId.formatLength && JsObjectId.regex.pattern.matcher(s).matches) {
       JsObjectId(s.substring(9, 33))
     } else if (s.length == JsUUID.formatLength && JsUUID.regex.pattern.matcher(s).matches) {
       JsUUID(s)

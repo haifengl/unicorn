@@ -90,6 +90,24 @@ class ColumnarJsonSerializer(
     buffer
   }
 
+  def serialize(json: JsTime): Array[Byte] = {
+    buffer.clear
+    serialize(buffer, json, None)
+    buffer
+  }
+
+  def serialize(json: JsDateTime): Array[Byte] = {
+    buffer.clear
+    serialize(buffer, json, None)
+    buffer
+  }
+
+  def serialize(json: JsTimestamp): Array[Byte] = {
+    buffer.clear
+    serialize(buffer, json, None)
+    buffer
+  }
+
   def serialize(json: JsObjectId): Array[Byte] = {
     buffer.clear
     serialize(buffer, json, None)
@@ -145,6 +163,9 @@ class ColumnarJsonSerializer(
       case x: JsDouble => map(jsonPath) = serialize(x)
       case x: JsString => map(jsonPath) = serialize(x)
       case x: JsDate => map(jsonPath) = serialize(x)
+      case x: JsTime => map(jsonPath) = serialize(x)
+      case x: JsDateTime => map(jsonPath) = serialize(x)
+      case x: JsTimestamp => map(jsonPath) = serialize(x)
       case x: JsUUID => map(jsonPath) = serialize(x)
       case x: JsObjectId => map(jsonPath) = serialize(x)
       case x: JsBinary => map(jsonPath) = serialize(x)
@@ -168,12 +189,15 @@ class ColumnarJsonSerializer(
     implicit val buffer = ByteBuffer.wrap(bytes.get)
     buffer.get match {
       // data type
-      case TYPE_BOOLEAN  => boolean(buffer)
+      case TYPE_BOOLEAN   => boolean(buffer)
       case TYPE_INT32     => int(buffer)
       case TYPE_INT64     => long(buffer)
       case END_OF_DOCUMENT | TYPE_MINKEY if bytes.get.length == 8 => JsCounter(buffer.getLong(0)) // hacking counter
       case TYPE_DOUBLE    => double(buffer)
-      case TYPE_DATETIME  => date(buffer)
+      case TYPE_DATE      => date(buffer)
+      case TYPE_TIME      => time(buffer)
+      case TYPE_DATETIME  => datetime(buffer)
+      case TYPE_TIMESTAMP => timestamp(buffer)
       case TYPE_STRING    => string(buffer)
       case TYPE_OBJECTID  => objectId(buffer)
       case TYPE_BINARY    => binary(buffer)

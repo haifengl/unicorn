@@ -16,7 +16,8 @@
 
 package unicorn.json
 
-import java.util.Date
+import java.time.{LocalDate, LocalTime, LocalDateTime}
+import java.sql.Timestamp
 import scala.collection.mutable.ArrayBuffer
 import unicorn.util._
 
@@ -217,8 +218,17 @@ case class Row(elements: IndexedSeq[JsValue]) extends Traversable[JsValue] {
   /** Returns the value at position i as a String object. */
   def getString(i: Int): String = elements(i).toString
 
-  /** Returns the value at position i of date type as java.util.Date. */
-  def getDate(i: Int): Date = elements(i).asDate
+  /** Returns the value at position i of date type as LocalDate. */
+  def getDate(i: Int): LocalDate = elements(i).asDate
+
+  /** Returns the value at position i of date type as LocalTime. */
+  def getTime(i: Int): LocalTime = elements(i).asTime
+
+  /** Returns the value at position i of date type as LocalDateTime. */
+  def getDateTime(i: Int): LocalDateTime = elements(i).asDateTime
+
+  /** Returns the value at position i of date type as Timestamp. */
+  def getTimestamp(i: Int): Timestamp = elements(i).asDateTimestamp
 
   /** Returns true if there are any NULL values in this row. */
   def anyNull: Boolean = {

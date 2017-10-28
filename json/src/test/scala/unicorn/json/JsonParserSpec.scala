@@ -55,9 +55,11 @@ class JsonParserSpec extends Specification {
     "parse '1302806349000l' to JsLong" in {
       JsonParser("1302806349000l") === JsLong(1302806349000L)
     }
+    /* we don't parse string to date/time/datetime/timestamp any more.
     "parse '2015-08-10T10:00:00.123Z' to JsDate" in {
       JsonParser("\"2015-08-10T10:00:00.123Z\"") === JsDate("2015-08-10T10:00:00.123Z")
     }
+    */
     "parse 'CA761232-ED42-11CE-BACD-00AA0057B223' to JsUUID" in {
       JsonParser("\"CA761232-ED42-11CE-BACD-00AA0057B223\"") === JsUUID("CA761232-ED42-11CE-BACD-00AA0057B223")
     }

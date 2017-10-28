@@ -29,7 +29,7 @@ trait BaseJsonSerializer extends JsonSerializer {
   /** End of string */
   val END_OF_STRING               : Byte = 0x00
 
-  /** Type markers */
+  /** Type markers, based on BSON (http://bsonspec.org/spec.html). */
   val TYPE_DOUBLE                 : Byte = 0x01
   val TYPE_STRING                 : Byte = 0x02
   val TYPE_DOCUMENT               : Byte = 0x03
@@ -38,7 +38,7 @@ trait BaseJsonSerializer extends JsonSerializer {
   val TYPE_UNDEFINED              : Byte = 0x06
   val TYPE_OBJECTID               : Byte = 0x07
   val TYPE_BOOLEAN                : Byte = 0x08
-  val TYPE_DATETIME               : Byte = 0x09
+  val TYPE_TIMESTAMP              : Byte = 0x09 // Called UTC datetime in BSON, UTC milliseconds since the Unix epoch.
   val TYPE_NULL                   : Byte = 0x0A
   val TYPE_REGEX                  : Byte = 0x0B
   val TYPE_DBPOINTER              : Byte = 0x0C
@@ -46,8 +46,12 @@ trait BaseJsonSerializer extends JsonSerializer {
   val TYPE_SYMBOL                 : Byte = 0x0E
   val TYPE_JAVASCRIPT_WITH_SCOPE  : Byte = 0x0F
   val TYPE_INT32                  : Byte = 0x10
-  val TYPE_TIMESTAMP              : Byte = 0x11
+  val TYPE_MONGODB_TIMESTAMP      : Byte = 0x11 // Special internal type used by MongoDB.
   val TYPE_INT64                  : Byte = 0x12
+  val TYPE_DECIMAL                : Byte = 0x13
+  val TYPE_DATE                   : Byte = 0x20 // LocalDate
+  val TYPE_TIME                   : Byte = 0x21 // LocalTime
+  val TYPE_DATETIME               : Byte = 0x22 // LocalDateTime
   val TYPE_MINKEY                 : Byte = 0xFF.toByte
   val TYPE_MAXKEY                 : Byte = 0x7F
 
@@ -117,7 +121,26 @@ trait BaseJsonSerializer extends JsonSerializer {
   }
 
   def serialize(buffer: ByteBuffer, json: JsDate, ename: Option[String]): Unit = {
+    buffer.put(TYPE_DATE)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.toEpochDay)
+  }
+
+  def serialize(buffer: ByteBuffer, json: JsTime, ename: Option[String]): Unit = {
+    buffer.put(TYPE_TIME)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.toNanoOfDay)
+  }
+
+  def serialize(buffer: ByteBuffer, json: JsDateTime, ename: Option[String]): Unit = {
     buffer.put(TYPE_DATETIME)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.toLocalDate.toEpochDay)
+    buffer.putLong(json.value.toLocalTime.toNanoOfDay)
+  }
+
+  def serialize(buffer: ByteBuffer, json: JsTimestamp, ename: Option[String]): Unit = {
+    buffer.put(TYPE_TIMESTAMP)
     serialize(buffer, ename)
     buffer.putLong(json.value.getTime)
   }
@@ -178,6 +201,18 @@ trait BaseJsonSerializer extends JsonSerializer {
 
   def date(buffer: ByteBuffer): JsDate = {
     JsDate(buffer.getLong)
+  }
+
+  def time(buffer: ByteBuffer): JsTime = {
+    JsTime(buffer.getLong)
+  }
+
+  def datetime(buffer: ByteBuffer): JsDateTime = {
+    JsDateTime(buffer.getLong, buffer.getLong)
+  }
+
+  def timestamp(buffer: ByteBuffer): JsTimestamp = {
+    JsTimestamp(buffer.getLong)
   }
 
   def objectId(buffer: ByteBuffer): JsValue = {

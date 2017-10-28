@@ -16,6 +16,8 @@
 
 package unicorn
 
+import java.time.{LocalDate, LocalTime, LocalDateTime, ZoneOffset}
+import java.sql.Timestamp
 import java.util.{Date, UUID}
 import unicorn.oid.BsonObjectId
 
@@ -43,7 +45,11 @@ package object json {
   implicit def long2JsValue(x: Long) = JsLong(x)
   implicit def double2JsValue(x: Double) = JsDouble(x)
   implicit def string2JsValue(x: String) = JsString(x)
-  implicit def date2JsValue(x: Date) = JsDate(x)
+  implicit def localDate2JsValue(x: LocalDate) = JsDate(x)
+  implicit def localTime2JsValue(x: LocalTime) = JsTime(x)
+  implicit def localDateTime2JsValue(x: LocalDateTime) = JsDateTime(x)
+  implicit def timestamp2JsValue(x: Timestamp) = JsTimestamp(x)
+  implicit def date2JsValue(x: Date) = JsTimestamp(x)
   implicit def uuid2JsValue(x: UUID) = JsUUID(x)
   implicit def objectId2JsValue(x: BsonObjectId) = JsObjectId(x)
   implicit def byteArray2JsValue(x: Array[Byte]) = JsBinary(x)
@@ -95,7 +101,11 @@ package object json {
   implicit def json2Int(json: JsValue): Int = json.asInt
   implicit def json2Long(json: JsValue): Long = json.asLong
   implicit def json2Double(json: JsValue): Double = json.asDouble
-  implicit def json2Date(json: JsValue): Date = json.asDate
+  implicit def json2LocalDate(json: JsValue): LocalDate = json.asDate
+  implicit def json2LocalTime(json: JsValue): LocalTime = json.asTime
+  implicit def json2LocalDateTime(json: JsValue): LocalDateTime = json.asDateTime
+  implicit def json2Timestamp(json: JsValue): Timestamp = json.asTimestamp
+  implicit def json2Date(json: JsValue): Date = json.asTimestamp
   implicit def json2String(json: JsValue): String = json.toString
   implicit def json2ByteArray(json: JsValue): Array[Byte] = json match {
     case JsBinary(x) => x
@@ -130,8 +140,24 @@ package json {
     def toJsArray: JsArray = JsArray(seq.map {e => JsString(e)}: _*)
   }
 
-  private[json] class PimpedDateSeq(seq: Seq[Date]) {
+  private[json] class PimpedLocalDateSeq(seq: Seq[LocalDate]) {
     def toJsArray: JsArray = JsArray(seq.map {e => JsDate(e)}: _*)
+  }
+
+  private[json] class PimpedLocalTimeSeq(seq: Seq[LocalTime]) {
+    def toJsArray: JsArray = JsArray(seq.map {e => JsTime(e)}: _*)
+  }
+
+  private[json] class PimpedLocalDateTimeSeq(seq: Seq[LocalDateTime]) {
+    def toJsArray: JsArray = JsArray(seq.map {e => JsDateTime(e)}: _*)
+  }
+
+  private[json] class PimpedTimestampSeq(seq: Seq[Timestamp]) {
+    def toJsArray: JsArray = JsArray(seq.map {e => JsTimestamp(e)}: _*)
+  }
+
+  private[json] class PimpedDateSeq(seq: Seq[Date]) {
+    def toJsArray: JsArray = JsArray(seq.map {e => JsTimestamp(e)}: _*)
   }
 
   private[json] class PimpedBooleanMap(map: Map[String, Boolean]) {
@@ -154,8 +180,24 @@ package json {
     def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsString(v)) })
   }
 
-  private[json] class PimpedDateMap(map: Map[String, Date]) {
+  private[json] class PimpedLocalDateMap(map: Map[String, LocalDate]) {
     def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsDate(v)) })
+  }
+
+  private[json] class PimpedLocalTimeMap(map: Map[String, LocalTime]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsTime(v)) })
+  }
+
+  private[json] class PimpedLocalDateTimeMap(map: Map[String, LocalDateTime]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsDateTime(v)) })
+  }
+
+  private[json] class PimpedTimestampMap(map: Map[String, Timestamp]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsTimestamp(v)) })
+  }
+
+  private[json] class PimpedDateMap(map: Map[String, Date]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsTimestamp(v)) })
   }
 
   private[json] class PimpedBooleanMutableMap(map: collection.mutable.Map[String, Boolean]) {
@@ -193,9 +235,37 @@ package json {
     })
   }
 
-  private[json] class PimpedDateMutableMap(map: collection.mutable.Map[String, Date]) {
+  private[json] class PimpedDLocalateMutableMap(map: collection.mutable.Map[String, LocalDate]) {
     def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
       val js: JsValue = JsDate(v)
+      (k, js)
+    })
+  }
+
+  private[json] class PimpedLocalTimeMutableMap(map: collection.mutable.Map[String, LocalTime]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
+      val js: JsValue = JsTime(v)
+      (k, js)
+    })
+  }
+
+  private[json] class PimpedLocalDateTimeMutableMap(map: collection.mutable.Map[String, LocalDateTime]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
+      val js: JsValue = JsDateTime(v)
+      (k, js)
+    })
+  }
+
+  private[json] class PimpedTimestampMutableMap(map: collection.mutable.Map[String, Timestamp]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
+      val js: JsValue = JsTimestamp(v)
+      (k, js)
+    })
+  }
+
+  private[json] class PimpedDateMutableMap(map: collection.mutable.Map[String, Date]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
+      val js: JsValue = JsTimestamp(v)
       (k, js)
     })
   }
