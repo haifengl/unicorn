@@ -16,7 +16,8 @@
 
 package unicorn
 
-import java.time.{LocalDate, LocalTime, LocalDateTime, ZoneOffset}
+import java.math.BigDecimal
+import java.time.{LocalDate, LocalTime, LocalDateTime}
 import java.sql.Timestamp
 import java.util.{Date, UUID}
 import unicorn.oid.BsonObjectId
@@ -44,6 +45,7 @@ package object json {
   implicit def int2JsValue(x: Int) = JsInt(x)
   implicit def long2JsValue(x: Long) = JsLong(x)
   implicit def double2JsValue(x: Double) = JsDouble(x)
+  implicit def bigdecimal2JsValue(x: BigDecimal) = JsDecimal(x)
   implicit def string2JsValue(x: String) = JsString(x)
   implicit def localDate2JsValue(x: LocalDate) = JsDate(x)
   implicit def localTime2JsValue(x: LocalTime) = JsTime(x)
@@ -64,20 +66,31 @@ package object json {
   implicit def pimpIntSeq(x: Seq[Int]) = new PimpedIntSeq(x)
   implicit def pimpLongSeq(x: Seq[Long]) = new PimpedLongSeq(x)
   implicit def pimpDoubleSeq(x: Seq[Double]) = new PimpedDoubleSeq(x)
+  implicit def pimpBigDecimalSeq(x: Seq[BigDecimal]) = new PimpedBigDecimalSeq(x)
   implicit def pimpStringSeq(x: Seq[String]) = new PimpedStringSeq(x)
-  implicit def pimpDateSeq(x: Seq[Date]) = new PimpedDateSeq(x)
+  implicit def pimpLocalDateArray(x: Seq[LocalDate]) = new PimpedLocalDateSeq(x)
+  implicit def pimpLocalTimeArray(x: Seq[LocalTime]) = new PimpedLocalTimeSeq(x)
+  implicit def pimpLocalDateTimeArray(x: Seq[LocalDateTime]) = new PimpedLocalDateTimeSeq(x)
+  implicit def pimpDateArray(x: Seq[Date]) = new PimpedDateSeq(x)
+  implicit def pimpTimestampArray(x: Seq[Timestamp]) = new PimpedTimestampSeq(x)
 
   implicit def pimpBooleanArray(x: Array[Boolean]) = new PimpedBooleanSeq(x)
   implicit def pimpIntArray(x: Array[Int]) = new PimpedIntSeq(x)
   implicit def pimpLongArray(x: Array[Long]) = new PimpedLongSeq(x)
   implicit def pimpDoubleArray(x: Array[Double]) = new PimpedDoubleSeq(x)
+  implicit def pimpBigDecimalArray(x: Array[BigDecimal]) = new PimpedBigDecimalSeq(x)
   implicit def pimpStringArray(x: Array[String]) = new PimpedStringSeq(x)
+  implicit def pimpLocalDateArray(x: Array[LocalDate]) = new PimpedLocalDateSeq(x)
+  implicit def pimpLocalTimeArray(x: Array[LocalTime]) = new PimpedLocalTimeSeq(x)
+  implicit def pimpLocalDateTimeArray(x: Array[LocalDateTime]) = new PimpedLocalDateTimeSeq(x)
   implicit def pimpDateArray(x: Array[Date]) = new PimpedDateSeq(x)
+  implicit def pimpTimestampArray(x: Array[Timestamp]) = new PimpedTimestampSeq(x)
 
   implicit def pimpBooleanMap(x: Map[String, Boolean]) = new PimpedBooleanMap(x)
   implicit def pimpIntMap(x: Map[String, Int]) = new PimpedIntMap(x)
   implicit def pimpLongMap(x: Map[String, Long]) = new PimpedLongMap(x)
   implicit def pimpDoubleMap(x: Map[String, Double]) = new PimpedDoubleMap(x)
+  implicit def pimpBigDecimalMap(x: Map[String, BigDecimal]) = new PimpedBigDecimalMap(x)
   implicit def pimpStringMap(x: Map[String, String]) = new PimpedStringMap(x)
   implicit def pimpDateMap(x: Map[String, Date]) = new PimpedDateMap(x)
 
@@ -85,22 +98,29 @@ package object json {
   implicit def pimpIntMutableMap(x: collection.mutable.Map[String, Int]) = new PimpedIntMutableMap(x)
   implicit def pimpLongMutableMap(x: collection.mutable.Map[String, Long]) = new PimpedLongMutableMap(x)
   implicit def pimpDoubleMutableMap(x: collection.mutable.Map[String, Double]) = new PimpedDoubleMutableMap(x)
+  implicit def pimpBigDecimalMutableMap(x: collection.mutable.Map[String, BigDecimal]) = new PimpedBigDecimalMutableMap(x)
   implicit def pimpStringMutableMap(x: collection.mutable.Map[String, String]) = new PimpedStringMutableMap(x)
   implicit def pimpDateMutableMap(x: collection.mutable.Map[String, Date]) = new PimpedDateMutableMap(x)
 
-  implicit def json2Boolean(x: JsBoolean) = x.value
-  implicit def json2Int(x: JsInt) = x.value
-  implicit def json2Long(x: JsLong) = x.value
-  implicit def json2Double(x: JsDouble) = x.value
-  implicit def json2String(x: JsString) = x.value
-  implicit def json2Date(x: JsDate) = x.value
-  implicit def json2UUID(x: JsUUID) = x.value
-  implicit def json2Binary(x: JsBinary) = x.value
+  implicit def json2Boolean(x: JsBoolean): Boolean = x.value
+  implicit def json2Int(x: JsInt): Int = x.value
+  implicit def json2Long(x: JsLong): Long = x.value
+  implicit def json2Double(x: JsDouble): Double = x.value
+  implicit def json2BigDecimal(x: JsDecimal): BigDecimal = x.value
+  implicit def json2String(x: JsString): String = x.value
+  implicit def json2Date(x: JsDate): LocalDate = x.value
+  implicit def json2Time(x: JsTime): LocalTime = x.value
+  implicit def json2DateTime(x: JsDateTime): LocalDateTime = x.value
+  implicit def json2Timestamp(x: JsTimestamp): Timestamp = x.value
+  implicit def json2Date(x: JsTimestamp): Date = x.value
+  implicit def json2UUID(x: JsUUID): UUID = x.value
+  implicit def json2Binary(x: JsBinary): Array[Byte] = x.value
 
   implicit def json2Boolean(json: JsValue): Boolean = json.asBoolean
   implicit def json2Int(json: JsValue): Int = json.asInt
   implicit def json2Long(json: JsValue): Long = json.asLong
   implicit def json2Double(json: JsValue): Double = json.asDouble
+  implicit def json2BigDecimal(json: JsValue): BigDecimal = json.asDecimal
   implicit def json2LocalDate(json: JsValue): LocalDate = json.asDate
   implicit def json2LocalTime(json: JsValue): LocalTime = json.asTime
   implicit def json2LocalDateTime(json: JsValue): LocalDateTime = json.asDateTime
@@ -134,6 +154,10 @@ package json {
 
   private[json] class PimpedDoubleSeq(seq: Seq[Double]) {
     def toJsArray: JsArray = JsArray(seq.map {e => JsDouble(e)}: _*)
+  }
+
+  private[json] class PimpedBigDecimalSeq(seq: Seq[BigDecimal]) {
+    def toJsArray: JsArray = JsArray(seq.map {e => JsDecimal(e)}: _*)
   }
 
   private[json] class PimpedStringSeq(seq: Seq[String]) {
@@ -174,6 +198,10 @@ package json {
 
   private[json] class PimpedDoubleMap(map: Map[String, Double]) {
     def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsDouble(v)) })
+  }
+
+  private[json] class PimpedBigDecimalMap(map: Map[String, BigDecimal]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) => (k, JsDecimal(v)) })
   }
 
   private[json] class PimpedStringMap(map: Map[String, String]) {
@@ -224,6 +252,13 @@ package json {
   private[json] class PimpedDoubleMutableMap(map: collection.mutable.Map[String, Double]) {
     def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
       val js: JsValue = JsDouble(v)
+      (k, js)
+    })
+  }
+
+  private[json] class PimpedBigDecimalMutableMap(map: collection.mutable.Map[String, BigDecimal]) {
+    def toJsObject: JsObject = JsObject(map.map { case (k, v) =>
+      val js: JsValue = JsDecimal(v)
       (k, js)
     })
   }
