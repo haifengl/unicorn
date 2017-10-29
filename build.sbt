@@ -6,7 +6,7 @@ lazy val commonSettings = Seq(
   organization := "com.github.haifengl",
   organizationName := "Haifeng Li",
   organizationHomepage := Some(url("http://haifengl.github.io/")),
-  version := "2.2.0",
+  version := "3.0.0",
   scalaVersion := "2.11.8",
   scalacOptions := Seq("-feature", "-language:_", "-unchecked", "-deprecation", "-encoding", "utf8"),
   scalacOptions in Test ++= Seq("-Yrangepos"),
@@ -55,7 +55,7 @@ lazy val nonPubishSettings = commonSettings ++ Seq(
 )
 
 lazy val root = project.in(file(".")).settings(nonPubishSettings: _*)
-  .aggregate(util, oid, json, bigtable, hbase, cassandra, accumulo, rocksdb, unibase, narwhal, sql, shell, rhino)
+  .aggregate(util, oid, json, bigtable, hbase, cassandra, accumulo, rocksdb, unibase, narwhal, sql, shell)
 
 lazy val util = project.in(file("util")).settings(commonSettings: _*)
 
