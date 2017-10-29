@@ -27,4 +27,8 @@ package object graph {
   private[unicorn] val GraphVertexColumnFamily  = "vertex"
   private[unicorn] val GraphInEdgeColumnFamily  = "in"
   private[unicorn] val GraphOutEdgeColumnFamily = "out"
+
+  private[unicorn] val KnowledgeGraphSPO = "SPO"
+  private[unicorn] val KnowledgeGraphPOS = "POS"
+  private[unicorn] val KnowledgeGraphOSP = "OSP"
 }

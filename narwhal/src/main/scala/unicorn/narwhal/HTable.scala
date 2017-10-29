@@ -70,7 +70,7 @@ class HTable(override val table: HBaseTable, meta: JsObject) extends Table(table
 
   /** Gets a document. */
   def apply(asOfDate: Date, id: Date, fields: String*): Option[JsObject] = {
-    apply(JsDate(id))
+    apply(JsTimestamp(id))
   }
 
   /** Gets a document. */
@@ -450,7 +450,7 @@ class HTable(override val table: HBaseTable, meta: JsObject) extends Table(table
     case StringLiteral(x) => serializer.valueSerializer.serialize(JsString(x))
     case IntLiteral(x) => serializer.valueSerializer.serialize(JsInt(x))
     case DoubleLiteral(x) => serializer.valueSerializer.serialize(JsDouble(x))
-    case DateLiteral(x) => serializer.valueSerializer.serialize(JsDate(x))
+    case DateLiteral(x) => serializer.valueSerializer.serialize(JsTimestamp(x))
   }
 
   /** Writes the given scan into a Base64 encoded string.
