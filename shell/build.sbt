@@ -17,11 +17,11 @@ executableScriptName := "unicorn"
 
 bashScriptConfigLocation := Some("${app_home}/../conf/unicorn.ini")
 
-bashScriptExtraDefines += """addJava "-Dsmile.home=${app_home}""""
-
 bashScriptExtraDefines += """addJava "-Dscala.repl.autoruncode=${app_home}/init.scala""""
 
 bashScriptExtraDefines += """addJava "-Dconfig.file=${app_home}/../conf/unicorn.conf""""
+
+batScriptExtraDefines  += """set _JAVA_OPTS=!_JAVA_OPTS! -Dscala.repl.autoruncode=%UNICORN_HOME%\\bin\\init.scala -Dconfig.file=%UNICORN_HOME%\\..\\conf\\unicorn.conf"""
 
 // native packager Docker plugin
 enablePlugins(DockerPlugin)
