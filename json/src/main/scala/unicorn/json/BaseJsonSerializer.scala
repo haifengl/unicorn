@@ -93,19 +93,13 @@ trait BaseJsonSerializer extends JsonSerializer {
   def serialize(buffer: ByteBuffer, json: JsInt, ename: Option[String]): Unit = {
     buffer.put(TYPE_INT32)
     serialize(buffer, ename)
-    // We flip the leading bit so that negative values will
-    // sort before 0 in ASC order for bit strings. This is
-    // important as integers on JVM are all signed.
-    buffer.putInt(json.value ^ 0x80000000)
+    buffer.putInt(json.value)
   }
 
   def serialize(buffer: ByteBuffer, json: JsLong, ename: Option[String]): Unit = {
     buffer.put(TYPE_INT64)
     serialize(buffer, ename)
-    // We flip the leading bit so that negative values will
-    // sort before 0 in ASC order for bit strings. This is
-    // important as integers on JVM are all signed.
-    buffer.putLong(json.value ^ 0x8000000000000000L)
+    buffer.putLong(json.value)
   }
 
   def serialize(buffer: ByteBuffer, json: JsDouble, ename: Option[String]): Unit = {
@@ -117,11 +111,9 @@ trait BaseJsonSerializer extends JsonSerializer {
   def serialize(buffer: ByteBuffer, json: JsDecimal, ename: Option[String]): Unit = {
     buffer.put(TYPE_BIGDECIMAL)
     serialize(buffer, ename)
-    // We flip the leading bit so that negative values will
-    // sort before 0 in ASC order for bit strings. This is
-    // important as integers on JVM are all signed.
-    buffer.putLong(json.value.unscaledValue.longValue ^ 0x8000000000000000L)
-    buffer.putInt(json.value.scale)
+    val bytes = json.value.toPlainString.getBytes(charset)
+    buffer.putInt(bytes.length)
+    buffer.put(bytes)
   }
 
   def serialize(buffer: ByteBuffer, json: JsString, ename: Option[String]): Unit = {
@@ -196,14 +188,12 @@ trait BaseJsonSerializer extends JsonSerializer {
 
   def int(buffer: ByteBuffer): JsInt = {
     val x = buffer.getInt
-    // Remember to flip back the leading bit
-    if (x == 0) JsInt.zero else JsInt(x ^ 0x80000000)
+    if (x == 0) JsInt.zero else JsInt(x)
   }
 
   def long(buffer: ByteBuffer): JsLong = {
     val x = buffer.getLong
-    // Remember to flip back the leading bit
-    if (x == 0) JsLong.zero else JsLong(x ^ 0x8000000000000000L)
+    if (x == 0) JsLong.zero else JsLong(x)
   }
 
   def double(buffer: ByteBuffer): JsDouble = {
@@ -212,10 +202,10 @@ trait BaseJsonSerializer extends JsonSerializer {
   }
 
   def decimal(buffer: ByteBuffer): JsDecimal = {
-    val unscaledVal = buffer.getLong
-    val scale = buffer.getInt
-    // Remember to flip back the leading bit
-    JsDecimal(new BigDecimal(BigInteger.valueOf(unscaledVal ^ 0x8000000000000000L), scale))
+    val length = buffer.getInt
+    val dst = new Array[Byte](length)
+    buffer.get(dst)
+    JsDecimal(new String(dst, charset))
   }
 
   def date(buffer: ByteBuffer): JsDate = {
