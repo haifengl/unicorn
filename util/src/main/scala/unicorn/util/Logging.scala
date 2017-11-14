@@ -16,13 +16,13 @@
 
 package unicorn.util
 
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 /**
  * @author Haifeng Li
  */
 trait Logging {
 
-  lazy val log = LoggerFactory.getLogger(getClass)
+  lazy val log = Logger(getClass)
 
 }
