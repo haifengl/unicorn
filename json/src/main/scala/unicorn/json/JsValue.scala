@@ -474,8 +474,6 @@ case class JsDateTime(value: LocalDateTime) extends JsValue with Ordered[JsDateT
 object JsDateTime {
   /** Obtains an instance from a date and time. */
   def apply(date: LocalDate, time: LocalTime): JsDateTime = new JsDateTime(LocalDateTime.of(date, time))
-  /** Obtains an instance from a date and time. */
-  def apply(date: Long, time: Long): JsDateTime = new JsDateTime(LocalDateTime.of(LocalDate.ofEpochDay(date), LocalTime.ofNanoOfDay(time)))
   /** The string must represent a valid date-time and is parsed using DateTimeFormatter.ISO_LOCAL_DATE_TIME. */
   def apply(datetime: String): JsDateTime = new JsDateTime(LocalDateTime.parse(datetime))
 }
@@ -508,16 +506,16 @@ case class JsTimestamp(value: Timestamp) extends JsValue with Ordered[JsTimestam
 }
 
 object JsTimestamp {
-  /** Constructs a JsTimestamp object using a milliseconds time value.
+  /** Lifts a java.util.Date object to a JsTimestamp value. */
+  def apply(time: Date): JsTimestamp = new JsTimestamp(new Timestamp(time.getTime))
+
+  /** Constructs a JsTimestamp object using the milliseconds from the epoch.
     *
     * @param time milliseconds since January 1, 1970, 00:00:00 GMT.
     *             A negative number is the number of milliseconds
     *             before January 1, 1970, 00:00:00 GMT.
     */
   def apply(time: Long): JsTimestamp = new JsTimestamp(new Timestamp(time))
-
-  /** Converts a java.util.Date object to a JsTimestamp value. */
-  def apply(time: Date): JsTimestamp = new JsTimestamp(new Timestamp(time.getTime))
 
   /** Converts a String object in JDBC timestamp escape format
     * to a JsTimestamp value.

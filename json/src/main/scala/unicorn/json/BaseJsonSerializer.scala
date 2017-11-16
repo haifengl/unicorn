@@ -16,8 +16,10 @@
 
 package unicorn.json
 
-import java.math.{BigInteger, BigDecimal}
+import java.sql.Timestamp
 import java.nio.ByteBuffer
+import java.time.{LocalDate, LocalTime}
+
 import unicorn.oid.BsonObjectId
 
 /** Json serializer helper functions.
@@ -147,6 +149,7 @@ trait BaseJsonSerializer extends JsonSerializer {
     buffer.put(TYPE_TIMESTAMP)
     serialize(buffer, ename)
     buffer.putLong(json.value.getTime)
+    buffer.putInt(json.value.getNanos)
   }
 
   def serialize(buffer: ByteBuffer, json: JsObjectId, ename: Option[String]): Unit = {
@@ -217,11 +220,17 @@ trait BaseJsonSerializer extends JsonSerializer {
   }
 
   def datetime(buffer: ByteBuffer): JsDateTime = {
-    JsDateTime(buffer.getLong, buffer.getLong)
+    val date = LocalDate.ofEpochDay(buffer.getLong)
+    val time = LocalTime.ofNanoOfDay(buffer.getLong)
+    JsDateTime(date, time)
   }
 
   def timestamp(buffer: ByteBuffer): JsTimestamp = {
-    JsTimestamp(buffer.getLong)
+    val milliseconds = buffer.getLong
+    val nanos = buffer.getInt
+    val timestamp = new Timestamp(milliseconds)
+    timestamp.setNanos(nanos)
+    JsTimestamp(timestamp)
   }
 
   def objectId(buffer: ByteBuffer): JsValue = {
