@@ -16,43 +16,42 @@
 
 package unicorn
 
-import java.util.{Date, UUID}
-
-import unicorn.json.{JsBinary, JsDate, JsDouble, JsInt, JsLong, JsObjectId, JsString, JsUUID}
-import unicorn.oid.BsonObjectId
+import org.apache.hadoop.hbase.util.{Order => HBaseOrder}
 
 /**
   * @author Haifeng Li
   */
 package object unibase {
+  /** Row key sort order. */
+  type Order = HBaseOrder
+
+  /** Ascending sort order. */
+  val ASCENDING  = HBaseOrder.ASCENDING
+  /** Descending sort order. */
+  val DESCENDING = HBaseOrder.DESCENDING
+
+  /** The first byte of the encoding indicates the content type. */
+  private[unibase] val TYPE_DATETIME     : Byte = 0x50
+  private[unibase] val TYPE_OBJECTID     : Byte = 0x60
+  private[unibase] val TYPE_UUID         : Byte = 0x61
+  private[unibase] val TYPE_ARRAY        : Byte = 0x70
+
+  private[unibase] val NULL              = Array(0x05.toByte)
+  private[unibase] val NEGATIVE_INFINITY = Array(0x07.toByte)
+  private[unibase] val ZERO              = Array(0x15.toByte)
+  private[unibase] val POSITIVE_INFINITY = Array(0x23.toByte)
+  private[unibase] val NaN               = Array(0x25.toByte)
+
   val $id = "_id"
   val $tenant = "_tenant"
 
+  private[unibase] val DefaultRowKeyField = "_id"
+
   private[unibase] val DocumentColumnFamily = "doc"
 
-  // Originally we used "." as delimiter in table name.
-  // However, "." cannot be part of table name in Accumulo.
-  // So we switch to "_".
+  // Note that "." cannot be part of table name in Accumulo.
   private[unibase] val MetaTableName = "unicorn_meta_table"
   private[unibase] val MetaTableColumnFamily = "meta"
 
   private[unibase] val DefaultLocalityField = "default_locality"
-
-  implicit def int2RowKey(x: Int) = IntRowKey(JsInt(x))
-  implicit def long2RowKey(x: Long) = LongRowKey(JsLong(x))
-  implicit def double2RowKey(x: Double) = DoubleRowKey(JsDouble(x))
-  implicit def string2RowKey(x: String) = StringRowKey(JsString(x))
-  implicit def date2RowKey(x: Date) = DateRowKey(JsDate(x))
-  implicit def uuid2RowKey(x: UUID) = UuidRowKey(JsUUID(x))
-  implicit def objectId2RowKey(x: BsonObjectId) = ObjectIdRowKey(JsObjectId(x))
-  implicit def byteArray2JsValue(x: Array[Byte]) = BinaryRowKey(JsBinary(x))
-
-  implicit def int2RowKey(x: JsInt) = IntRowKey(x)
-  implicit def long2RowKey(x: JsLong) = LongRowKey(x)
-  implicit def double2RowKey(x: JsDouble) = DoubleRowKey(x)
-  implicit def string2RowKey(x: JsString) = StringRowKey(x)
-  implicit def date2RowKey(x: JsDate) = DateRowKey(x)
-  implicit def uuid2RowKey(x: JsUUID) = UuidRowKey(x)
-  implicit def objectId2RowKey(x: JsObjectId) = ObjectIdRowKey(x)
-  implicit def byteArray2JsValue(x: JsBinary) = BinaryRowKey(x)
 }
