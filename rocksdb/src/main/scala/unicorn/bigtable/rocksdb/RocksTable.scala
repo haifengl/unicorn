@@ -17,7 +17,7 @@
 package unicorn.bigtable.rocksdb
 
 import java.nio.ByteBuffer
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import org.rocksdb.{ColumnFamilyDescriptor, ColumnFamilyHandle, DBOptions, Options, ReadOptions, WriteBatch, WriteOptions}
 import unicorn.bigtable._
 import unicorn.util._
@@ -36,18 +36,16 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
 
   val name: String = new java.io.File(path).getName
 
-  private val listColumnFamilies = org.rocksdb.RocksDB.listColumnFamilies(new Options().setCreateIfMissing(false), path)
+  private val listColumnFamilies = org.rocksdb.RocksDB.listColumnFamilies(new Options().setCreateIfMissing(false), path).asScala
 
   override val columnFamilies = listColumnFamilies.map(new String(_)).filter(_ != "default")
 
-  val descriptors = listColumnFamilies.map{ family =>
-    new ColumnFamilyDescriptor(family)
-  }
+  val descriptors = listColumnFamilies.map(new ColumnFamilyDescriptor(_)).asJava
 
   private def open: (org.rocksdb.RocksDB, Map[String, ColumnFamilyHandle]) = {
     val handles = new java.util.ArrayList[ColumnFamilyHandle]
     val rocksdb = org.rocksdb.RocksDB.open(options, path, descriptors, handles)
-    val map = columnFamilies.zip(handles).toMap
+    val map = columnFamilies.zip(handles.asScala).toMap
     (rocksdb, map)
   }
 
@@ -55,7 +53,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
 
   override def close: Unit = {
     rocksdb.close
-    options.dispose
+    options.close
   }
 
   private val keyBuffer = ByteBuffer.allocate(65536)
@@ -114,7 +112,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
       values
     } else {
       val keys = columns.map(key(row, _))
-      rocksdb.multiGet(List.fill(keys.size)(handles(family)), keys).map { case (key, value) =>
+      rocksdb.multiGet(List.fill(keys.size)(handles(family)).asJava, keys.asJava).asScala.map { case (key, value) =>
         val (_, column) = unzip(key)
         Column(column, value)
       }.toSeq
