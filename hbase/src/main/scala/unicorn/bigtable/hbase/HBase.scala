@@ -17,7 +17,7 @@
 package unicorn.bigtable.hbase
 
 import java.util.Properties
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.HTableDescriptor
@@ -25,7 +25,6 @@ import org.apache.hadoop.hbase.client.ConnectionFactory
 import org.apache.hadoop.hbase.HColumnDescriptor
 import org.apache.hadoop.hbase.TableName
 import unicorn.bigtable._
-//import unicorn.index.Indexing
 
 /** HBase server adapter.
   *
@@ -40,11 +39,6 @@ class HBase(config: Configuration) extends Database[HBaseTable] {
   override def apply(name: String): HBaseTable = {
     new HBaseTable(this, name)
   }
-/*
-  def getTableWithIndex(name: String): HBaseTable with Indexing = {
-    new HBaseTable(this, name) with Indexing
-  }
-*/
 
   override def tables: Set[String] = {
     admin.listTableNames.filter(!_.isSystemTable).map(_.getNameAsString).toSet
@@ -55,10 +49,11 @@ class HBase(config: Configuration) extends Database[HBaseTable] {
       throw new IllegalStateException(s"Creates Table $name, which already exists")
     
     val tableDesc = new HTableDescriptor(TableName.valueOf(name))
-    props.stringPropertyNames.foreach { p => tableDesc.setConfiguration(p, props.getProperty(p))}
+    val propNames = props.stringPropertyNames.asScala
+    propNames.foreach { p => tableDesc.setConfiguration(p, props.getProperty(p))}
     families.foreach { family =>
       val desc = new HColumnDescriptor(family)
-      props.stringPropertyNames.foreach { p => desc.setConfiguration(p, props.getProperty(p))}
+      propNames.foreach { p => desc.setConfiguration(p, props.getProperty(p))}
       tableDesc.addFamily(desc)
     }
     admin.createTable(tableDesc)

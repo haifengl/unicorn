@@ -18,7 +18,7 @@ package unicorn.bigtable.hbase
 
 import java.util.Date
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import org.apache.hadoop.hbase.TableName
 import org.apache.hadoop.hbase.client.{Append, Delete, Get, Increment, Put, Result, ResultScanner, Scan}
 import org.apache.hadoop.hbase.filter.{ColumnPrefixFilter, MultipleColumnPrefixFilter, ColumnRangeFilter, CompareFilter, FilterList, KeyOnlyFilter, SingleColumnValueFilter}, CompareFilter.CompareOp
@@ -59,7 +59,7 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
   }
 
   override def getAuthorizations: Seq[String] = {
-    if (authorizations.isDefined) authorizations.get.getLabels
+    if (authorizations.isDefined) authorizations.get.getLabels.asScala
     else Seq.empty
   }
 
@@ -104,7 +104,7 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
       get
     }
 
-    HBaseTable.getRows(table.get(gets))
+    HBaseTable.getRows(table.get(gets.asJava))
   }
 
   override def getBatch(rows: Seq[ByteArray], family: String, columns: ByteArray*): Seq[Row] = {
@@ -114,7 +114,7 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
       get
     }
 
-    HBaseTable.getRows(table.get(gets))
+    HBaseTable.getRows(table.get(gets.asJava))
   }
 
   override def getAsOf(asOfDate: Date, row: ByteArray, family: String, columns: ByteArray*): Seq[Column] = {
@@ -213,8 +213,8 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
       }
       f.setFilterIfMissing(filterIfMissing)
       f
-    case And(list) => new FilterList(FilterList.Operator.MUST_PASS_ALL, list.map(hbaseFilter(_)))
-    case Or(list) => new FilterList(FilterList.Operator.MUST_PASS_ONE, list.map(hbaseFilter(_)))
+    case And(list) => new FilterList(FilterList.Operator.MUST_PASS_ALL, list.map(hbaseFilter(_)).asJava)
+    case Or(list) => new FilterList(FilterList.Operator.MUST_PASS_ONE, list.map(hbaseFilter(_)).asJava)
   }
 
   override def intraRowScan(row: ByteArray, family: String, startColumn: ByteArray, stopColumn: ByteArray): IntraRowScanner = {
@@ -270,7 +270,7 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
       }
       put
     }
-    table.put(puts)
+    table.put(puts.asJava)
   }
 
   override def checkAndPut(row: ByteArray, checkFamily: String, checkColumn: ByteArray, family: String, columns: Column*): Boolean = {
@@ -327,7 +327,7 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
     val deletes = rows.map(newDelete(_))
     // HTable modifies the input parameter deletes.
     // Make sure we pass in a mutable collection.
-    table.delete(deletes.toBuffer)
+    table.delete(deletes.asJava)
   }
 
   override def rollback(row: ByteArray, family: String, columns: ByteArray*): Unit = {
@@ -459,12 +459,12 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
 
 object HBaseTable {
   def getRow(result: Result): Row = {
-    val valueMap = result.getMap
+    val valueMap = result.getMap.asScala
     if (valueMap == null) return Row(result.getRow, Seq.empty)
 
     val families = valueMap.map { case (family, columns) =>
-      val values = columns.flatMap { case (column, ver) =>
-        ver.map { case (timestamp, value) =>
+      val values = columns.asScala.flatMap { case (column, ver) =>
+        ver.asScala.map { case (timestamp, value) =>
           Column(column, value, timestamp)
         }
       }.toSeq
