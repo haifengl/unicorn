@@ -7,10 +7,10 @@ lazy val commonSettings = Seq(
   organizationName := "Haifeng Li",
   organizationHomepage := Some(url("http://haifengl.github.io/")),
   version := "3.0.0",
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.11.11",
   scalacOptions := Seq("-feature", "-language:_", "-unchecked", "-deprecation", "-encoding", "utf8"),
   scalacOptions in Test ++= Seq("-Yrangepos"),
-  libraryDependencies += "org.specs2" %% "specs2-core" % "3.7" % "test",
+  libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.9" % "test",
   parallelExecution in Test := false,
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
@@ -85,7 +85,7 @@ lazy val sql = project.in(file("sql")).settings(commonSettings: _*).dependsOn(ut
 
 //lazy val search = project.in(file("search")).settings(nonPubishSettings: _*).dependsOn(unibase)
 
-lazy val shell = project.in(file("shell")).settings(nonPubishSettings: _*).dependsOn(unibase, narwhal, sql, hbase, cassandra, accumulo, rocksdb)
+lazy val shell = project.in(file("shell")).settings(nonPubishSettings: _*).dependsOn(unibase, narwhal, sql, rocksdb)
 
-lazy val rhino = project.in(file("rhino")).enablePlugins(SbtTwirl).settings(nonPubishSettings: _*).dependsOn(unibase, hbase, cassandra, accumulo, rocksdb)
+lazy val rhino = project.in(file("rhino")).enablePlugins(SbtTwirl).settings(nonPubishSettings: _*).dependsOn(unibase, narwhal)
 
