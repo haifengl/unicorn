@@ -146,7 +146,7 @@ class JsValueSpec extends Specification {
         "key3" -> "blabla"
       )
 
-      (obj \\ "tags") must equalTo(Seq(JsArray("alpha2", "beta2", "gamma2"), JsArray("alpha1", "beta1", "gamma1")))
+      (obj \\ "tags") must equalTo(JsArray(JsArray("alpha2", "beta2", "gamma2"), JsArray("alpha1", "beta1", "gamma1")))
     }
 
     "retrieve 2-level recursive path" in {
@@ -163,7 +163,7 @@ class JsValueSpec extends Specification {
         "level2" -> 5
       )
 
-      (obj \ "level1" \\ "tags") must equalTo(Seq(JsArray("alpha2", "beta2", "gamma2"), JsArray("alpha1", "beta1", "gamma1")))
+      (obj \ "level1" \\ "tags") must equalTo(JsArray(JsArray("alpha2", "beta2", "gamma2"), JsArray("alpha1", "beta1", "gamma1")))
     }
     
     "retrieve 2-level middle recursive path" in {
