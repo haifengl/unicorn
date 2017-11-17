@@ -17,7 +17,7 @@
 package unicorn.bigtable.accumulo
 
 import java.util.Properties
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import org.apache.hadoop.io.Text
 import org.apache.accumulo.core.client.{Connector, ZooKeeperInstance}
 import org.apache.accumulo.core.client.admin.NewTableConfiguration
@@ -38,7 +38,7 @@ class Accumulo(val connector: Connector) extends Database[AccumuloTable] {
   }
 
   override def tables: Set[String] = {
-    connector.tableOperations.list.toSet
+    connector.tableOperations.list.asScala.toSet
   }
 
   override def createTable(name: String, props: Properties, families: String*): AccumuloTable = {
@@ -46,17 +46,17 @@ class Accumulo(val connector: Connector) extends Database[AccumuloTable] {
       throw new IllegalStateException(s"Creates Table $name, which already exists")
 
     val config = new NewTableConfiguration
-    val settings = props.stringPropertyNames.map { p => (p, props.getProperty(p)) }.toMap
-    config.setProperties(settings)
+    val settings = props.stringPropertyNames.asScala.map { p => (p, props.getProperty(p)) }.toMap
+    config.setProperties(settings.asJava)
     connector.tableOperations.create(name, config)
 
     val localityGroups = families.map { family =>
-      val set = new java.util.TreeSet[Text]()
+      val set: java.util.Set[Text] = new java.util.TreeSet[Text]()
       set.add(new Text(family))
       (family, set)
     }.toMap
 
-    tableOperations.setLocalityGroups(name, localityGroups)
+    tableOperations.setLocalityGroups(name, localityGroups.asJava)
     apply(name)
   }
   

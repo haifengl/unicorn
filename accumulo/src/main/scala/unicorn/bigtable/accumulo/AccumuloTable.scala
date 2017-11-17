@@ -16,7 +16,7 @@
 
 package unicorn.bigtable.accumulo
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import org.apache.hadoop.io.Text
 import org.apache.accumulo.core.client.{BatchWriterConfig, ScannerBase}
 import org.apache.accumulo.core.data.{Mutation, Range}
@@ -31,7 +31,7 @@ import unicorn.util._
 class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with RowScan with CellLevelSecurity {
   override def close: Unit = () // Connector has no close method
 
-  override val columnFamilies = db.tableOperations.getLocalityGroups(name).map(_._1).toSeq
+  override val columnFamilies = db.tableOperations.getLocalityGroups(name).asScala.map(_._1).toSeq
 
   override val startRowKey: ByteArray = null
   override val endRowKey: ByteArray = null
@@ -52,7 +52,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with Ro
   }
 
   override def getAuthorizations: Seq[String] = {
-    authorizations.getAuthorizations.map { bytes => new String(bytes)}
+    authorizations.getAuthorizations.asScala.map { bytes => new String(bytes)}
   }
 
   override def apply(row: ByteArray, family: String, column: ByteArray): Option[ByteArray] = {
@@ -85,7 +85,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with Ro
     scanner.setRange(new Range(new Text(row)))
     getColumns(scanner, family, columns)
 
-    scanner.map { cell =>
+    scanner.asScala.map { cell =>
       Column(cell.getKey.getColumnQualifier.copyBytes, cell.getValue.get, cell.getKey.getTimestamp)
     }.toSeq
   }
@@ -93,7 +93,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with Ro
   override def getBatch(rows: Seq[ByteArray], families: Seq[(String, Seq[ByteArray])]): Seq[Row] = {
     val scanner = newBatchScanner(numBatchThreads(rows))
     val ranges = rows.map { row => new Range(new Text(row)) }
-    scanner.setRanges(ranges)
+    scanner.setRanges(ranges.asJava)
     families.foreach { case (family, columns) => getColumns(scanner, family, columns) }
     val rowScanner = new AccumuloRowScanner(scanner)
     rowScanner.toSeq
@@ -102,7 +102,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with Ro
   override def getBatch(rows: Seq[ByteArray], family: String, columns: ByteArray*): Seq[Row] = {
     val scanner = newBatchScanner(numBatchThreads(rows))
     val ranges = rows.map { row => new Range(new Text(row)) }
-    scanner.setRanges(ranges)
+    scanner.setRanges(ranges.asJava)
 
     if (columns.isEmpty)
       scanner.fetchColumnFamily(new Text(family))
@@ -204,7 +204,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with Ro
     if (columns.isEmpty) {
       val range = Range.exact(new Text(row), new Text(family))
       val deleter = newBatchDeleter(1)
-      deleter.setRanges(Seq(range))
+      deleter.setRanges(java.util.Collections.singletonList(range))
       deleter.delete
     } else {
       val writer = newBatchWriter(1)
@@ -231,7 +231,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends BigTable with Ro
   override def deleteBatch(rows: Seq[ByteArray]): Unit = {
     val deleter = newBatchDeleter(numBatchThreads(rows))
     val ranges = rows.flatMap { row => Seq(Range.exact(new Text(row))) }
-    deleter.setRanges(ranges)
+    deleter.setRanges(ranges.asJava)
     deleter.delete
   }
 
