@@ -17,7 +17,7 @@
 package unicorn.bigtable.cassandra
 
 import java.nio.ByteBuffer
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import org.apache.cassandra.thrift.{Column => CassandraColumn}
 import org.apache.cassandra.thrift.ColumnParent
@@ -41,7 +41,7 @@ import unicorn.util._
 class CassandraTable(val db: Cassandra, val name: String, consistency: ConsistencyLevel = ConsistencyLevel.LOCAL_QUORUM) extends BigTable with IntraRowScan with Counter {
   val client = db.client
   client.set_keyspace(name)
-  override val columnFamilies = client.describe_keyspace(name).getCf_defs.map(_.getName)
+  override val columnFamilies = client.describe_keyspace(name).getCf_defs.asScala.map(_.getName)
 
   override def close: Unit = () // Client has no close method
 
@@ -121,7 +121,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
         Row(row, Seq(ColumnFamily(family, result)))
       }.filter(!_.families.head.columns.isEmpty)
     } else {
-      val keys = rows.map(ByteBuffer.wrap(_))
+      val keys = rows.map(ByteBuffer.wrap(_)).asJava
       val parent = new ColumnParent(family)
       val predicate = new SlicePredicate
       columns.foreach { column =>
@@ -129,7 +129,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
       }
 
       val slices = client.multiget_slice(keys, parent, predicate, consistency)
-      slices.map { case (row, slice) =>
+      slices.asScala.map { case (row, slice) =>
         Row(row.array, Seq(ColumnFamily(family, getColumns(slice))))
       }.toSeq
     }
@@ -157,7 +157,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
   }
 
   private def getColumns(result: java.util.List[ColumnOrSuperColumn]): Seq[Column] = {
-    result.map { column =>
+    result.asScala.map { column =>
       val c = column.getColumn
       Column(c.getName, c.getValue, c.getTimestamp)
     }

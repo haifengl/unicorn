@@ -18,7 +18,7 @@ package unicorn.bigtable.cassandra
 
 import java.util.Properties
 import java.net.{InetAddress, UnknownHostException}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import org.apache.cassandra.locator.SimpleSnitch
 import org.apache.cassandra.thrift.Cassandra.Client
 import org.apache.cassandra.thrift.{ConsistencyLevel, KsDef, CfDef}
@@ -47,7 +47,7 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] wi
   }
 
   override def tables: Set[String] = {
-    client.describe_keyspaces.map(_.getName).toSet
+    client.describe_keyspaces.asScala.map(_.getName).toSet
   }
 
   /** Create a table with default NetworkTopologyStrategy placement strategy. */
@@ -60,7 +60,7 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] wi
 
   override def createTable(name: String, props: Properties, families: String*): CassandraTable = {
     val replicationStrategy = props.getProperty("class")
-    val replicationOptions = props.stringPropertyNames.filter(_ != "class").map { p => (p, props.getProperty(p)) }.toMap
+    val replicationOptions = props.stringPropertyNames.asScala.filter(_ != "class").map { p => (p, props.getProperty(p)) }.toMap.asJava
     if (replicationStrategy.contains(".NetworkTopologyStrategy") && replicationOptions.isEmpty) {
       // adding default data center from SimpleSnitch
       val snitch = new SimpleSnitch
@@ -84,7 +84,7 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] wi
     }
     
     val schemaVersion = client.system_add_keyspace(keyspace)
-    log.info(s"create table $name: $schemaVersion")
+    log.info("create table {}: {}", name, schemaVersion)
     apply(name)
   }
   
@@ -93,7 +93,7 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] wi
   }
 
   override def truncateTable(name: String): Unit = {
-    client.describe_keyspace(name).getCf_defs.foreach { cf =>
+    client.describe_keyspace(name).getCf_defs.asScala.foreach { cf =>
       client.truncate(cf.getName)
     }
   }
