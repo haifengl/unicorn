@@ -1,4 +1,4 @@
 name := "unicorn-json"
 
-libraryDependencies += "io.gatling" %% "jsonpath" % "0.6.4"
+libraryDependencies += "io.gatling" %% "jsonpath" % "0.6.10"
 
