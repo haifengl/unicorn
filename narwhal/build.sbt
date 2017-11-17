@@ -1,7 +1,7 @@
 name := "unicorn-narwhal"
 
 libraryDependencies ++= {
-  val sparkV = "1.6.1"
+  val sparkV = "1.6.3"
   Seq(
     "org.apache.spark"  %%  "spark-core"    % sparkV  exclude("org.slf4j", "slf4j-log4j12"),
     "org.apache.spark"  %%  "spark-sql"     % sparkV,

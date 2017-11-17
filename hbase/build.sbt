@@ -1,7 +1,7 @@
 name := "unicorn-hbase"
 
 libraryDependencies ++= {
-  val hbaseV = "1.2.5"
+  val hbaseV = "1.2.6"
   val hadoopV = "2.6.5"
   Seq(
     // Spark conflicts with other servlet-api jars
