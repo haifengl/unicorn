@@ -150,7 +150,7 @@ object JsValueOrdering extends Ordering[JsValue] {
     try {
       a.asDouble.compare(b.asDouble)
     } catch {
-      case e: UnsupportedOperationException => a.toString.compare(b.toString)
+      case _: UnsupportedOperationException => a.toString.compare(b.toString)
     }
   }
 }

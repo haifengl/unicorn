@@ -113,6 +113,7 @@ package object json {
   implicit def json2DateTime(x: JsDateTime): LocalDateTime = x.value
   implicit def json2Timestamp(x: JsTimestamp): Timestamp = x.value
   implicit def json2Date(x: JsTimestamp): Date = x.value
+  implicit def json2ObjectId(x: JsObjectId): BsonObjectId = x.value
   implicit def json2UUID(x: JsUUID): UUID = x.value
   implicit def json2Binary(x: JsBinary): Array[Byte] = x.value
 
