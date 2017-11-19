@@ -14,17 +14,17 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn.oid
+package unicorn.json
 
 import org.specs2.mutable._
 
-class BsonObjectIdSpec extends Specification {
+class ObjectIdSpec extends Specification {
 
-  "BsonObjectId" should {
+  "ObjectId" should {
     "change over time" in {
-      println(BsonObjectId.generate)
-      println(BsonObjectId.generate)
-      BsonObjectId.generate !== BsonObjectId.generate
+      println(ObjectId.generate)
+      println(ObjectId.generate)
+      ObjectId.generate !== ObjectId.generate
     }
   }
 }

@@ -14,10 +14,10 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn.oid
+package unicorn.json
 
 import java.nio.ByteBuffer
-import java.util.Date
+import java.util.{Arrays, Date}
 import scala.util.Try
 import unicorn.util._
 
@@ -30,20 +30,27 @@ import unicorn.util._
  *
  * The implementation is adopt from ReactiveMongo.
  */
-class BsonObjectId(id: Array[Byte]) extends ObjectId(id) {
-  require(id.size == BsonObjectId.size)
+case class ObjectId(id: Array[Byte]) extends Comparable[ObjectId] {
+  require(id.size == ObjectId.size)
+
+  override def equals(that: Any): Boolean = {
+    that.isInstanceOf[ObjectId] && Arrays.equals(id, that.asInstanceOf[ObjectId].id)
+  }
+
+  override def compareTo(o: ObjectId): Int = {
+    compareByteArray(id, o.id)
+  }
 
   /** In the form of a string literal "ObjectId(...)" */
   override def toString: String = {
-    val hex = bytes2Hex(id)
-    s"""ObjectId($hex)"""
+    s"""ObjectId(${bytes2Hex(id)})"""
   }
 
   /** The timestamp port of ObjectId object as a Date */
-  def getTimestamp: Date = new Date(ByteBuffer.wrap(id.take(4)).getInt * 1000L)
+  def timestamp: Date = new Date(ByteBuffer.wrap(id.take(4)).getInt * 1000L)
 }
 
-object BsonObjectId {
+object ObjectId {
   /** ObjectId byte array size */
   val size = 12
 
@@ -104,10 +111,7 @@ object BsonObjectId {
   }
 
   /** Generate a new BSON ObjectId. */
-  def apply(): BsonObjectId = generate
-
-  /** Constructs a BSON ObjectId from raw bytes. */
-  def apply(id: Array[Byte]): BsonObjectId = new BsonObjectId(id)
+  def apply(): ObjectId = generate
 
   /**
    * Constructs a BSON ObjectId element from a hexadecimal String representation.
@@ -115,14 +119,14 @@ object BsonObjectId {
    *
    * `parse(str: String): Try[BSONObjectID]` should be considered instead of this method.
    */
-  def apply(id: String): BsonObjectId = {
+  def apply(id: String): ObjectId = {
     require(id.length == 24, s"wrong ObjectId: '$id'")
     /** Constructs a BSON ObjectId element from a hexadecimal String representation */
-    new BsonObjectId(hex2Bytes(id))
+    new ObjectId(hex2Bytes(id))
   }
 
   /** Tries to make a BSON ObjectId element from a hexadecimal String representation. */
-  def parse(str: String): Try[BsonObjectId] = Try(apply(str))
+  def parse(str: String): Try[ObjectId] = Try(apply(str))
 
   /**
    * Generates a new BSON ObjectId.
@@ -135,7 +139,7 @@ object BsonObjectId {
    * The returned BSONObjectID contains a timestamp set to the current time (in seconds),
    * with the `machine identifier`, `thread identifier` and `increment` properly set.
    */
-  def generate: BsonObjectId = fromTime(System.currentTimeMillis, false)
+  def generate: ObjectId = fromTime(System.currentTimeMillis, false)
 
   /**
    * Generates a new BSON ObjectID from the given timestamp in milliseconds.
@@ -157,7 +161,7 @@ object BsonObjectId {
    *
    * @param fillOnlyTimestamp if true, the returned BSONObjectID will only have the timestamp bytes set; the other will be set to zero.
    */
-  def fromTime(timeMillis: Long, fillOnlyTimestamp: Boolean = true): BsonObjectId = {
+  def fromTime(timeMillis: Long, fillOnlyTimestamp: Boolean = true): ObjectId = {
     // n of seconds since epoch. Big endian
     val timestamp = (timeMillis / 1000).toInt
     val id = new Array[Byte](12)
@@ -185,6 +189,6 @@ object BsonObjectId {
       id(11) = (c & 0xFF).toByte
     }
 
-    new BsonObjectId(id)
+    new ObjectId(id)
   }
 }

@@ -22,7 +22,6 @@ import java.util.{Date, UUID}
 import java.math.BigDecimal
 import scala.language.dynamics
 import scala.language.implicitConversions
-import unicorn.oid.BsonObjectId
 
 /**
  * JSON value.
@@ -545,10 +544,10 @@ object JsUUID {
   def apply(uuid: Array[Byte]) = new JsUUID(UUID.nameUUIDFromBytes(uuid))
 }
 
-case class JsObjectId(value: BsonObjectId) extends JsValue {
+case class JsObjectId(value: ObjectId) extends JsValue {
   override def toString = value.toString
   override def equals(o: Any) = o match {
-    case that: BsonObjectId => value == that
+    case that: ObjectId => value == that
     case JsObjectId(that) => value == that
     case _ => false
   }
@@ -557,9 +556,9 @@ case class JsObjectId(value: BsonObjectId) extends JsValue {
 object JsObjectId {
   val regex = """ObjectId\([0-9a-fA-F]{24}\)""".r
   val formatLength = 34
-  def apply() = new JsObjectId(BsonObjectId.generate)
-  def apply(id: String) = new JsObjectId(BsonObjectId(id))
-  def apply(id: Array[Byte]) = new JsObjectId(BsonObjectId(id))
+  def apply() = new JsObjectId(ObjectId.generate)
+  def apply(id: String) = new JsObjectId(ObjectId(id))
+  def apply(id: Array[Byte]) = new JsObjectId(ObjectId(id))
 }
 
 case class JsBinary(value: Array[Byte]) extends JsValue {

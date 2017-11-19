@@ -20,8 +20,6 @@ import java.sql.Timestamp
 import java.nio.ByteBuffer
 import java.time.{LocalDate, LocalTime}
 
-import unicorn.oid.BsonObjectId
-
 /** Json serializer helper functions.
   * @author Haifeng Li
   */
@@ -234,9 +232,9 @@ trait BaseJsonSerializer extends JsonSerializer {
   }
 
   def objectId(buffer: ByteBuffer): JsValue = {
-    val id = new Array[Byte](BsonObjectId.size)
+    val id = new Array[Byte](ObjectId.size)
     buffer.get(id)
-    JsObjectId(BsonObjectId(id))
+    JsObjectId(ObjectId(id))
   }
 
   def string(buffer: ByteBuffer): JsString = {

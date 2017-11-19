@@ -20,7 +20,6 @@ import java.math.BigDecimal
 import java.time.{LocalDate, LocalTime, LocalDateTime}
 import java.sql.Timestamp
 import java.util.{Date, UUID}
-import unicorn.oid.BsonObjectId
 
 /**
  * @author Haifeng Li
@@ -53,7 +52,7 @@ package object json {
   implicit def timestamp2JsValue(x: Timestamp) = JsTimestamp(x)
   implicit def date2JsValue(x: Date) = JsTimestamp(x)
   implicit def uuid2JsValue(x: UUID) = JsUUID(x)
-  implicit def objectId2JsValue(x: BsonObjectId) = JsObjectId(x)
+  implicit def objectId2JsValue(x: ObjectId) = JsObjectId(x)
   implicit def byteArray2JsValue(x: Array[Byte]) = JsBinary(x)
 
   implicit def array2JsValue(x: Array[JsValue]) = JsArray(x: _*)
@@ -113,7 +112,7 @@ package object json {
   implicit def json2DateTime(x: JsDateTime): LocalDateTime = x.value
   implicit def json2Timestamp(x: JsTimestamp): Timestamp = x.value
   implicit def json2Date(x: JsTimestamp): Date = x.value
-  implicit def json2ObjectId(x: JsObjectId): BsonObjectId = x.value
+  implicit def json2ObjectId(x: JsObjectId): ObjectId = x.value
   implicit def json2UUID(x: JsUUID): UUID = x.value
   implicit def json2Binary(x: JsBinary): Array[Byte] = x.value
 
