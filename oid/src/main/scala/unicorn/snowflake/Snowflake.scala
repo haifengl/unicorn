@@ -14,7 +14,7 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn.oid
+package unicorn.snowflake
 
 import unicorn.util.Logging
 
