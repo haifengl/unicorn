@@ -61,7 +61,7 @@ lazy val util = project.in(file("util")).settings(commonSettings: _*)
 
 lazy val oid = project.in(file("oid")).settings(commonSettings: _*).dependsOn(util)
 
-lazy val json = project.in(file("json")).settings(commonSettings: _*).dependsOn(oid)
+lazy val json = project.in(file("json")).settings(commonSettings: _*).dependsOn(util)
 
 lazy val bigtable = project.in(file("bigtable")).settings(commonSettings: _*).dependsOn(util)
 
