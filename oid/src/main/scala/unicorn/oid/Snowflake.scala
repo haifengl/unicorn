@@ -37,7 +37,7 @@ import unicorn.util.Logging
   *
   * @author Haifeng Li
   */
-class Snowflake(val worker: Long, var sequence: Long = 0L) extends LongIdGenerator with Logging {
+class Snowflake(val worker: Long, var sequence: Long = 0L) extends Logging {
   import Snowflake.{epoch, workerIdBits, maxWorkerId, sequenceBits}
 
   private val workerIdShift = sequenceBits
@@ -53,7 +53,7 @@ class Snowflake(val worker: Long, var sequence: Long = 0L) extends LongIdGenerat
 
   log.info(s"worker starting. timestamp left shift $timestampLeftShift, worker id bits $workerIdBits, sequence bits $sequenceBits, worker id $worker")
 
-  override def next: Long = {
+  def next: Long = {
     var timestamp = System.currentTimeMillis
 
     if (timestamp < lastTimestamp) {
