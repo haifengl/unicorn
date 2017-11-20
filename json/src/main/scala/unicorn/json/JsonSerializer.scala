@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
   }
 
   private def serialize(buffer: ByteBuffer, string: String): Unit = {
-    buffer.put(string.getBytes(charset))
+    buffer.put(string.getBytes(UTF8))
     buffer.put(END_OF_STRING)
   }
 
@@ -123,7 +123,7 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
   private def serialize(buffer: ByteBuffer, json: JsDecimal, ename: Option[String]): Unit = {
     buffer.put(TYPE_BIGDECIMAL)
     serialize(buffer, ename)
-    val bytes = json.value.toPlainString.getBytes(charset)
+    val bytes = json.value.toPlainString.getBytes(UTF8)
     buffer.putInt(bytes.length)
     buffer.put(bytes)
   }
@@ -131,7 +131,7 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
   private def serialize(buffer: ByteBuffer, json: JsString, ename: Option[String]): Unit = {
     buffer.put(TYPE_STRING)
     serialize(buffer, ename)
-    val bytes = json.value.getBytes(charset)
+    val bytes = json.value.getBytes(UTF8)
     buffer.putInt(bytes.length)
     buffer.put(bytes)
   }
@@ -225,7 +225,7 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
     val length = buffer.getInt
     val dst = new Array[Byte](length)
     buffer.get(dst)
-    JsDecimal(new String(dst, charset))
+    JsDecimal(new String(dst, UTF8))
   }
 
   private def date(buffer: ByteBuffer): JsDate = {
@@ -279,7 +279,7 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
     val length = buffer.getInt
     val dst = new Array[Byte](length)
     buffer.get(dst)
-    JsString(new String(dst, charset))
+    JsString(new String(dst, UTF8))
   }
 
   private def binary(buffer: ByteBuffer): JsValue = {
@@ -393,7 +393,7 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
 }
 
 object JsonSerializer {
-  val charset = Charset.forName("UTF-8")
+  val UTF8 = Charset.forName("UTF-8")
 
   /** End of document */
   val END_OF_DOCUMENT             : Byte = 0x00
