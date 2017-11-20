@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.security.visibility.{Authorizations, CellVisibili
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.hbase.{CellUtil, HConstants}
 import unicorn.bigtable._, ScanFilter._
-import unicorn.util._
 
 /** HBase table adapter.
   *

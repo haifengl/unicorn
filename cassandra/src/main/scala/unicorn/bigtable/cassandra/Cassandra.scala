@@ -25,14 +25,16 @@ import org.apache.cassandra.thrift.{ConsistencyLevel, KsDef, CfDef}
 import org.apache.thrift.transport.TFramedTransport
 import org.apache.thrift.transport.TSocket
 import org.apache.thrift.protocol.TBinaryProtocol
+import com.typesafe.scalalogging.Logger
 import unicorn.bigtable._
-import unicorn.util.Logging
 
 /** Cassandra server adapter.
   *
   * @author Haifeng Li
   */
-class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] with Logging {
+class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] {
+  private lazy val logger = Logger(getClass)
+
   val protocol = new TBinaryProtocol(transport)
   val client = new Client(protocol)
 
@@ -84,7 +86,7 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] wi
     }
     
     val schemaVersion = client.system_add_keyspace(keyspace)
-    log.info("create table {}: {}", name, schemaVersion)
+    logger.info("create table {}: {}", name, schemaVersion)
     apply(name)
   }
   
@@ -107,7 +109,7 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] wi
     */
   override def compactTable(name: String): Unit = {
     // fail silently
-    log.warn("Cassandra client API doesn't support compaction")
+    logger.warn("Cassandra client API doesn't support compaction")
   }
 }
 

@@ -20,7 +20,6 @@ import java.nio.ByteBuffer
 import scala.collection.JavaConverters._
 import org.rocksdb.{ColumnFamilyDescriptor, ColumnFamilyHandle, DBOptions, Options, ReadOptions, WriteBatch, WriteOptions}
 import unicorn.bigtable._
-import unicorn.util._
 
 /** A RocksTable is actually a plain RocksDB in its own directory.
   * RocksDB is a key-value store. Although we add the abstraction of

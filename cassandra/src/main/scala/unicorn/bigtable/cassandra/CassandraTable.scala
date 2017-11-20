@@ -31,7 +31,6 @@ import org.apache.cassandra.thrift.SlicePredicate
 import org.apache.cassandra.thrift.SliceRange
 import org.apache.cassandra.thrift.ColumnOrSuperColumn
 import unicorn.bigtable._
-import unicorn.util._
 
 /** Cassandra keyspace adapter. Cassandra's keyspaces may be regarded as tables
   * in other NoSQL solutions such as Accumulo and HBase.

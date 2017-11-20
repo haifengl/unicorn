@@ -22,7 +22,6 @@ import org.apache.accumulo.core.client.{BatchWriterConfig, ScannerBase}
 import org.apache.accumulo.core.data.{Mutation, Range}
 import org.apache.accumulo.core.security.{Authorizations, ColumnVisibility => CellVisibility}
 import unicorn.bigtable._
-import unicorn.util._
 
 /** Accumulo table adapter.
   *
