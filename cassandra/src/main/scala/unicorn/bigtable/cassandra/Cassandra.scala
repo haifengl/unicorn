@@ -17,9 +17,7 @@
 package unicorn.bigtable.cassandra
 
 import java.util.Properties
-import java.net.{InetAddress, UnknownHostException}
 import scala.collection.JavaConverters._
-import org.apache.cassandra.locator.SimpleSnitch
 import org.apache.cassandra.thrift.Cassandra.Client
 import org.apache.cassandra.thrift.{ConsistencyLevel, KsDef, CfDef}
 import org.apache.thrift.transport.TFramedTransport
@@ -63,16 +61,6 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] {
   override def createTable(name: String, props: Properties, families: String*): CassandraTable = {
     val replicationStrategy = props.getProperty("class")
     val replicationOptions = props.stringPropertyNames.asScala.filter(_ != "class").map { p => (p, props.getProperty(p)) }.toMap.asJava
-    if (replicationStrategy.contains(".NetworkTopologyStrategy") && replicationOptions.isEmpty) {
-      // adding default data center from SimpleSnitch
-      val snitch = new SimpleSnitch
-      try {
-        replicationOptions.put(snitch.getDatacenter(InetAddress.getLocalHost()), "1")
-      } catch {
-        case e: UnknownHostException => throw new RuntimeException(e)
-      }
-    }
-
     val keyspace = new KsDef
     keyspace.setName(name)
     keyspace.setStrategy_class(replicationStrategy)
