@@ -50,7 +50,10 @@ trait BigTable extends AutoCloseable {
   }
 
   /** Update a value. With it, one may use the syntactic sugar
+    * ```
     * table(row, family, column) = value
+    * ```
+    * Use the client machine UTC time for timestamp.
     */
   def update(row: ByteArray, family: String, column: ByteArray, value: ByteArray): Unit = {
     put(row, family, column, value, System.currentTimeMillis)
@@ -64,7 +67,9 @@ trait BigTable extends AutoCloseable {
     get(row, family, Seq.empty)
   }
 
-  /** Get all columns in one or more column families. If families is empty, get all column families. */
+  /** Get all or some columns in one or more column families.
+    * If families is empty, get all column families.
+    */
   def get(row: ByteArray, families: Seq[(String, Seq[ByteArray])] = Seq.empty): Seq[ColumnFamily]
 
   /** Get multiple rows for given column family.
@@ -107,7 +112,7 @@ trait BigTable extends AutoCloseable {
     delete(row, family, Seq.empty)
   }
 
-  /** Delete the columns of a row. */
+  /** Delete the column of a row. */
   def delete(row: ByteArray, family: String, column: ByteArray): Unit = {
     delete(row, family, Seq(column))
   }
@@ -127,7 +132,7 @@ trait BigTable extends AutoCloseable {
 
 /** Get a row at a given time point. */
 trait TimeTravel {
-  /** Get a column family. If columns is empty, get all columns in the column family. */
+  /** Get a column family. */
   def getAsOf(asOfDate: Date, row: ByteArray, family: String): Seq[Column] = {
     getAsOfDate(asOfDate, row, family, Seq.empty)
   }
@@ -161,9 +166,9 @@ trait RowScanner extends Iterator[Row] {
 
 /** If BigTable supports row scan. */
 trait RowScan {
-  /** First row in a table. */
+  /** Start row in a table. */
   val TableStartRow: ByteArray
-  /** Last row in a table. */
+  /** End row in a table. */
   val TableEndRow: ByteArray
 
   /** When scanning for a prefix the scan should stop immediately after the the last row that
@@ -178,7 +183,7 @@ trait RowScan {
     * @param prefix the row key prefix.
     * @return the closest next row key immediately following the given prefix.
     */
-  def nextRowKeyForPrefix(prefix: Array[Byte]): Array[Byte] = {
+  def prefixEndRow(prefix: Array[Byte]): Array[Byte] = {
     val ff:  Byte = 0xFF.toByte
     val one: Byte = 1
 
@@ -203,7 +208,7 @@ trait RowScan {
     stopRow
   }
 
-  /** Scan one column.
+  /** Scan a column family.
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     */
@@ -255,22 +260,22 @@ trait RowScan {
 
   /** Scan the rows whose key starts with the given prefix. */
   def scanPrefix(prefix: ByteArray, family: String): RowScanner = {
-    scan(prefix, nextRowKeyForPrefix(prefix), family)
+    scan(prefix, prefixEndRow(prefix), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
   def scanPrefix(prefix: ByteArray, family: String, columns: Seq[ByteArray]): RowScanner = {
-    scan(prefix, nextRowKeyForPrefix(prefix), family, columns)
+    scan(prefix, prefixEndRow(prefix), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
   def scanPrefix(prefix: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner = {
-    scan(prefix, nextRowKeyForPrefix(prefix), families)
+    scan(prefix, prefixEndRow(prefix), families)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
   def scanPrefix(prefix: ByteArray): RowScanner = {
-    scan(prefix, nextRowKeyForPrefix(prefix))
+    scan(prefix, prefixEndRow(prefix))
   }
 }
 
@@ -336,7 +341,7 @@ trait FilterScan extends RowScan {
     */
   def scan(filter: ScanFilter.Expression, startRow: ByteArray, stopRow: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner
 
-  /** Get one or more columns. If columns is empty, get all columns in the column family.
+  /** Get a column family.
     * @param filter filter expression
     */
   def get(filter: ScanFilter.Expression, row: ByteArray, family: String): Seq[Column] = {
@@ -348,7 +353,7 @@ trait FilterScan extends RowScan {
     */
   def get(filter: ScanFilter.Expression, row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column]
 
-  /** Get the range for all columns in one or more column families. If families is empty, get all column families.
+  /** Get the row.
     * @param filter filter expression
     */
   def get(filter: ScanFilter.Expression, row: ByteArray): Seq[ColumnFamily] = {
@@ -360,7 +365,7 @@ trait FilterScan extends RowScan {
     */
   def get(filter: ScanFilter.Expression, row: ByteArray, families: Seq[(String, Seq[ByteArray])]): Seq[ColumnFamily]
 
-  /** Get the range for all columns in one or more column families. If families is empty, get all column families.
+  /** Get the column keys only.
     */
   def getKeyOnly(row: ByteArray, families: String*): Seq[ColumnFamily]
 
@@ -386,22 +391,22 @@ trait FilterScan extends RowScan {
 
   /** Scan the rows whose key starts with the given prefix. */
   def scan(filter: ScanFilter.Expression, prefix: ByteArray, family: String): RowScanner = {
-    scan(filter, prefix, nextRowKeyForPrefix(prefix), family)
+    scan(filter, prefix, prefixEndRow(prefix), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
   def scan(filter: ScanFilter.Expression, prefix: ByteArray, family: String, columns: Seq[ByteArray]): RowScanner = {
-    scan(filter, prefix, nextRowKeyForPrefix(prefix), family, columns)
+    scan(filter, prefix, prefixEndRow(prefix), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
   def scan(filter: ScanFilter.Expression, prefix: ByteArray): RowScanner = {
-    scan(filter, prefix, nextRowKeyForPrefix(prefix))
+    scan(filter, prefix, prefixEndRow(prefix))
   }
 
   /** Scan the rows whose key starts with the given prefix. */
   def scan(filter: ScanFilter.Expression, prefix: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner = {
-    scan(filter, prefix, nextRowKeyForPrefix(prefix), families)
+    scan(filter, prefix, prefixEndRow(prefix), families)
   }
 }
 
