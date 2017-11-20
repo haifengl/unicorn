@@ -20,10 +20,348 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalTime}
+import com.typesafe.scalalogging.Logger
 
-/**
- * @author Haifeng Li
- */
+/** JSON Serializer in BSON format as defined by http://bsonspec.org/spec.html.
+  * This is not fully compatible with BSON spec, where the root must be a document/JsObject.
+  * In contrast, the root can be any JsValue in our implementation. Correspondingly, the
+  * root will always has the type byte as the first byte.
+  *
+  * Not Multi-threading safe. Each thread should have its own BsonSerializer instance.
+  * Data size limit to 10MB by default.
+  *
+  * @author Haifeng Li
+  */
+class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024)) {
+  private lazy val logger = Logger(getClass)
+
+  import JsonSerializer._
+
+  def serialize(json: JsValue): Array[Byte] = {
+    buffer.clear
+    serialize(buffer, json, None)
+    buffer
+  }
+
+  def deserialize(bytes: Array[Byte]): JsValue = {
+    val buffer = ByteBuffer.wrap(bytes)
+    deserialize(buffer)
+  }
+
+  def deserialize(buffer: ByteBuffer): JsValue = {
+    buffer.get match { // data type
+      case TYPE_BOOLEAN   => boolean(buffer)
+      case TYPE_INT32     => int(buffer)
+      case TYPE_INT64     => long(buffer)
+      case TYPE_DOUBLE    => double(buffer)
+      case TYPE_BIGDECIMAL=> decimal(buffer)
+      case TYPE_DATE      => date(buffer)
+      case TYPE_TIME      => time(buffer)
+      case TYPE_DATETIME  => datetime(buffer)
+      case TYPE_TIMESTAMP => timestamp(buffer)
+      case TYPE_STRING    => string(buffer)
+      case TYPE_BINARY    => binary(buffer)
+      case TYPE_OBJECTID  => objectId(buffer)
+      case TYPE_NULL      => JsNull
+      case TYPE_UNDEFINED => JsUndefined
+      case TYPE_DOCUMENT  =>
+        val doc = JsObject()
+        deserialize(buffer, doc)
+
+      case TYPE_ARRAY     =>
+        val doc = JsObject()
+        deserialize(buffer, doc)
+        val elements = doc.fields.map{case (k, v) => (k.toInt, v)}.toSeq.sortBy(_._1).map(_._2)
+        JsArray(elements: _*)
+
+      case x => throw new IllegalStateException("Unsupported BSON type: %02X" format x)
+    }
+  }
+
+  /** Clears the object buffer. */
+  def clear: Unit = buffer.clear
+
+  private def serialize(buffer: ByteBuffer, string: Option[String]): Unit = {
+    if (string.isDefined) {
+      serialize(buffer, string.get)
+    }
+  }
+
+  private def serialize(buffer: ByteBuffer, string: String): Unit = {
+    buffer.put(string.getBytes(charset))
+    buffer.put(END_OF_STRING)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsBoolean, ename: Option[String]): Unit = {
+    buffer.put(TYPE_BOOLEAN)
+    serialize(buffer, ename)
+    buffer.put(if (json.value) TRUE else FALSE)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsInt, ename: Option[String]): Unit = {
+    buffer.put(TYPE_INT32)
+    serialize(buffer, ename)
+    buffer.putInt(json.value)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsLong, ename: Option[String]): Unit = {
+    buffer.put(TYPE_INT64)
+    serialize(buffer, ename)
+    buffer.putLong(json.value)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsDouble, ename: Option[String]): Unit = {
+    buffer.put(TYPE_DOUBLE)
+    serialize(buffer, ename)
+    buffer.putDouble(json.value)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsDecimal, ename: Option[String]): Unit = {
+    buffer.put(TYPE_BIGDECIMAL)
+    serialize(buffer, ename)
+    val bytes = json.value.toPlainString.getBytes(charset)
+    buffer.putInt(bytes.length)
+    buffer.put(bytes)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsString, ename: Option[String]): Unit = {
+    buffer.put(TYPE_STRING)
+    serialize(buffer, ename)
+    val bytes = json.value.getBytes(charset)
+    buffer.putInt(bytes.length)
+    buffer.put(bytes)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsDate, ename: Option[String]): Unit = {
+    buffer.put(TYPE_DATE)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.toEpochDay)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsTime, ename: Option[String]): Unit = {
+    buffer.put(TYPE_TIME)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.toNanoOfDay)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsDateTime, ename: Option[String]): Unit = {
+    buffer.put(TYPE_DATETIME)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.toLocalDate.toEpochDay)
+    buffer.putLong(json.value.toLocalTime.toNanoOfDay)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsTimestamp, ename: Option[String]): Unit = {
+    buffer.put(TYPE_TIMESTAMP)
+    serialize(buffer, ename)
+    buffer.putLong(json.value.getTime)
+    buffer.putInt(json.value.getNanos)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsObjectId, ename: Option[String]): Unit = {
+    buffer.put(TYPE_OBJECTID)
+    serialize(buffer, ename)
+    buffer.put(json.value.id)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsUUID, ename: Option[String]): Unit = {
+    buffer.put(TYPE_BINARY)
+    serialize(buffer, ename)
+    buffer.putInt(16)
+    buffer.put(BINARY_SUBTYPE_UUID)
+    buffer.putLong(json.value.getMostSignificantBits)
+    buffer.putLong(json.value.getLeastSignificantBits)
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsBinary, ename: Option[String]): Unit = {
+    buffer.put(TYPE_BINARY)
+    serialize(buffer, ename)
+    buffer.putInt(json.value.size)
+    buffer.put(BINARY_SUBTYPE_GENERIC)
+    buffer.put(json.value)
+  }
+
+  private def cstring(buffer: ByteBuffer): String = {
+    val str = new collection.mutable.ArrayBuffer[Byte](64)
+    var b = buffer.get
+    while (b != END_OF_STRING) {str += b; b = buffer.get}
+    new String(str.toArray)
+  }
+
+  private def ename(buffer: ByteBuffer): String = cstring(buffer)
+
+  private def boolean(buffer: ByteBuffer): JsBoolean = {
+    val b = buffer.get
+    if (b == 0) JsFalse else JsTrue
+  }
+
+  private def int(buffer: ByteBuffer): JsInt = {
+    val x = buffer.getInt
+    if (x == 0) JsInt.zero else JsInt(x)
+  }
+
+  private def long(buffer: ByteBuffer): JsLong = {
+    val x = buffer.getLong
+    if (x == 0) JsLong.zero else JsLong(x)
+  }
+
+  private def double(buffer: ByteBuffer): JsDouble = {
+    val x = buffer.getDouble
+    if (x == 0.0) JsDouble.zero else JsDouble(x)
+  }
+
+  private def decimal(buffer: ByteBuffer): JsDecimal = {
+    val length = buffer.getInt
+    val dst = new Array[Byte](length)
+    buffer.get(dst)
+    JsDecimal(new String(dst, charset))
+  }
+
+  private def date(buffer: ByteBuffer): JsDate = {
+    JsDate(buffer.getLong)
+  }
+
+  private def time(buffer: ByteBuffer): JsTime = {
+    JsTime(buffer.getLong)
+  }
+
+  private def datetime(buffer: ByteBuffer): JsDateTime = {
+    val date = LocalDate.ofEpochDay(buffer.getLong)
+    val time = LocalTime.ofNanoOfDay(buffer.getLong)
+    JsDateTime(date, time)
+  }
+
+  private def timestamp(buffer: ByteBuffer): JsTimestamp = {
+    val milliseconds = buffer.getLong
+    val nanos = buffer.getInt
+    val timestamp = new Timestamp(milliseconds)
+    timestamp.setNanos(nanos)
+    JsTimestamp(timestamp)
+  }
+
+  private def objectId(buffer: ByteBuffer): JsValue = {
+    val id = new Array[Byte](ObjectId.size)
+    buffer.get(id)
+    JsObjectId(ObjectId(id))
+  }
+
+  private def string(buffer: ByteBuffer): JsString = {
+    val length = buffer.getInt
+    val dst = new Array[Byte](length)
+    buffer.get(dst)
+    JsString(new String(dst, charset))
+  }
+
+  private def binary(buffer: ByteBuffer): JsValue = {
+    val length = buffer.getInt
+    val subtype = buffer.get
+    if (subtype == BINARY_SUBTYPE_UUID) {
+      JsUUID(buffer.getLong, buffer.getLong)
+    } else {
+      val dst = new Array[Byte](length)
+      buffer.get(dst)
+      JsBinary(dst)
+    }
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsObject, ename: Option[String]): Unit = {
+    buffer.put(TYPE_DOCUMENT)
+    serialize(buffer, ename)
+
+    val start = buffer.position
+    buffer.putInt(0) // placeholder for document size
+
+    json.fields.toSeq.sortBy(_._1).foreach { case (field, value) =>
+      serialize(buffer, value, Some(field))
+    }
+
+    buffer.put(END_OF_DOCUMENT)
+    buffer.putInt(start, buffer.position - start) // update document size
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsArray, ename: Option[String]): Unit = {
+    buffer.put(TYPE_ARRAY)
+    serialize(buffer, ename)
+
+    val start = buffer.position
+    buffer.putInt(0) // placeholder for document size
+
+    json.elements.zipWithIndex.foreach { case (value, index) =>
+      serialize(buffer, value, Some(index.toString))
+    }
+
+    buffer.put(END_OF_DOCUMENT)
+    buffer.putInt(start, buffer.position - start) // update document size
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsValue, ename: Option[String]): Unit = {
+    json match {
+      case x: JsBoolean  => serialize(buffer, x, ename)
+      case x: JsInt      => serialize(buffer, x, ename)
+      case x: JsLong     => serialize(buffer, x, ename)
+      case x: JsDouble   => serialize(buffer, x, ename)
+      case x: JsDecimal  => serialize(buffer, x, ename)
+      case x: JsString   => serialize(buffer, x, ename)
+      case x: JsDate     => serialize(buffer, x, ename)
+      case x: JsTime     => serialize(buffer, x, ename)
+      case x: JsDateTime => serialize(buffer, x, ename)
+      case x: JsTimestamp=> serialize(buffer, x, ename)
+      case x: JsUUID     => serialize(buffer, x, ename)
+      case x: JsObjectId => serialize(buffer, x, ename)
+      case x: JsBinary   => serialize(buffer, x, ename)
+      case x: JsObject   => serialize(buffer, x, ename)
+      case x: JsArray    => serialize(buffer, x, ename)
+      case JsNull        => buffer.put(TYPE_NULL); serialize(buffer, ename)
+      case JsUndefined   => buffer.put(TYPE_UNDEFINED); serialize(buffer, ename)
+      case JsCounter(_)  => throw new IllegalArgumentException("BSON doesn't support JsCounter")
+    }
+  }
+
+  private def deserialize(buffer: ByteBuffer, json: JsObject): JsObject = {
+    val start = buffer.position
+    val size = buffer.getInt // document size
+
+    val loop = new scala.util.control.Breaks
+    loop.breakable {
+      while (true) {
+        buffer.get match {
+          case END_OF_DOCUMENT => loop.break
+          case TYPE_BOOLEAN    => json(ename(buffer)) = boolean(buffer)
+          case TYPE_INT32      => json(ename(buffer)) = int(buffer)
+          case TYPE_INT64      => json(ename(buffer)) = long(buffer)
+          case TYPE_DOUBLE     => json(ename(buffer)) = double(buffer)
+          case TYPE_BIGDECIMAL => json(ename(buffer)) = decimal(buffer)
+          case TYPE_DATE       => json(ename(buffer)) = date(buffer)
+          case TYPE_TIME       => json(ename(buffer)) = time(buffer)
+          case TYPE_DATETIME   => json(ename(buffer)) = datetime(buffer)
+          case TYPE_TIMESTAMP  => json(ename(buffer)) = timestamp(buffer)
+          case TYPE_STRING     => json(ename(buffer)) = string(buffer)
+          case TYPE_OBJECTID   => json(ename(buffer)) = objectId(buffer)
+          case TYPE_BINARY     => json(ename(buffer)) = binary(buffer)
+          case TYPE_NULL       => json(ename(buffer)) = JsNull
+          case TYPE_UNDEFINED  => json(ename(buffer)) = JsUndefined
+          case TYPE_DOCUMENT   =>
+            val doc = JsObject()
+            json(ename(buffer)) = deserialize(buffer, doc)
+
+          case TYPE_ARRAY      =>
+            val doc = JsObject()
+            val field = ename(buffer)
+            deserialize(buffer, doc)
+            json(field) = JsArray(doc.fields.map { case (k, v) => (k.toInt, v) }.toSeq.sortBy(_._1).map(_._2): _*)
+
+          case x               => throw new IllegalStateException("Unsupported BSON type: %02X" format x)
+        }
+      }
+    }
+
+    if (buffer.position - start != size)
+      logger.warn(s"BSON size $size but deserialize finishes at ${buffer.position}, starts at $start")
+
+    json
+  }
+}
+
 object JsonSerializer {
   val charset = Charset.forName("UTF-8")
 
@@ -82,188 +420,5 @@ object JsonSerializer {
     buffer.position(0)
     buffer.get(bytes)
     bytes
-  }
-
-  def serialize(buffer: ByteBuffer, string: Option[String]): Unit = {
-    if (string.isDefined) {
-      serialize(buffer, string.get)
-    }
-  }
-
-  def serialize(buffer: ByteBuffer, string: String): Unit = {
-    buffer.put(string.getBytes(charset))
-    buffer.put(END_OF_STRING)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsBoolean, ename: Option[String]): Unit = {
-    buffer.put(TYPE_BOOLEAN)
-    serialize(buffer, ename)
-    buffer.put(if (json.value) TRUE else FALSE)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsInt, ename: Option[String]): Unit = {
-    buffer.put(TYPE_INT32)
-    serialize(buffer, ename)
-    buffer.putInt(json.value)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsLong, ename: Option[String]): Unit = {
-    buffer.put(TYPE_INT64)
-    serialize(buffer, ename)
-    buffer.putLong(json.value)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsDouble, ename: Option[String]): Unit = {
-    buffer.put(TYPE_DOUBLE)
-    serialize(buffer, ename)
-    buffer.putDouble(json.value)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsDecimal, ename: Option[String]): Unit = {
-    buffer.put(TYPE_BIGDECIMAL)
-    serialize(buffer, ename)
-    val bytes = json.value.toPlainString.getBytes(charset)
-    buffer.putInt(bytes.length)
-    buffer.put(bytes)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsString, ename: Option[String]): Unit = {
-    buffer.put(TYPE_STRING)
-    serialize(buffer, ename)
-    val bytes = json.value.getBytes(charset)
-    buffer.putInt(bytes.length)
-    buffer.put(bytes)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsDate, ename: Option[String]): Unit = {
-    buffer.put(TYPE_DATE)
-    serialize(buffer, ename)
-    buffer.putLong(json.value.toEpochDay)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsTime, ename: Option[String]): Unit = {
-    buffer.put(TYPE_TIME)
-    serialize(buffer, ename)
-    buffer.putLong(json.value.toNanoOfDay)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsDateTime, ename: Option[String]): Unit = {
-    buffer.put(TYPE_DATETIME)
-    serialize(buffer, ename)
-    buffer.putLong(json.value.toLocalDate.toEpochDay)
-    buffer.putLong(json.value.toLocalTime.toNanoOfDay)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsTimestamp, ename: Option[String]): Unit = {
-    buffer.put(TYPE_TIMESTAMP)
-    serialize(buffer, ename)
-    buffer.putLong(json.value.getTime)
-    buffer.putInt(json.value.getNanos)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsObjectId, ename: Option[String]): Unit = {
-    buffer.put(TYPE_OBJECTID)
-    serialize(buffer, ename)
-    buffer.put(json.value.id)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsUUID, ename: Option[String]): Unit = {
-    buffer.put(TYPE_BINARY)
-    serialize(buffer, ename)
-    buffer.putInt(16)
-    buffer.put(BINARY_SUBTYPE_UUID)
-    buffer.putLong(json.value.getMostSignificantBits)
-    buffer.putLong(json.value.getLeastSignificantBits)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsBinary, ename: Option[String]): Unit = {
-    buffer.put(TYPE_BINARY)
-    serialize(buffer, ename)
-    buffer.putInt(json.value.size)
-    buffer.put(BINARY_SUBTYPE_GENERIC)
-    buffer.put(json.value)
-  }
-
-  def cstring(buffer: ByteBuffer): String = {
-    val str = new collection.mutable.ArrayBuffer[Byte](64)
-    var b = buffer.get
-    while (b != END_OF_STRING) {str += b; b = buffer.get}
-    new String(str.toArray)
-  }
-
-  def ename(buffer: ByteBuffer): String = cstring(buffer)
-
-  def boolean(buffer: ByteBuffer): JsBoolean = {
-    val b = buffer.get
-    if (b == 0) JsFalse else JsTrue
-  }
-
-  def int(buffer: ByteBuffer): JsInt = {
-    val x = buffer.getInt
-    if (x == 0) JsInt.zero else JsInt(x)
-  }
-
-  def long(buffer: ByteBuffer): JsLong = {
-    val x = buffer.getLong
-    if (x == 0) JsLong.zero else JsLong(x)
-  }
-
-  def double(buffer: ByteBuffer): JsDouble = {
-    val x = buffer.getDouble
-    if (x == 0.0) JsDouble.zero else JsDouble(x)
-  }
-
-  def decimal(buffer: ByteBuffer): JsDecimal = {
-    val length = buffer.getInt
-    val dst = new Array[Byte](length)
-    buffer.get(dst)
-    JsDecimal(new String(dst, charset))
-  }
-
-  def date(buffer: ByteBuffer): JsDate = {
-    JsDate(buffer.getLong)
-  }
-
-  def time(buffer: ByteBuffer): JsTime = {
-    JsTime(buffer.getLong)
-  }
-
-  def datetime(buffer: ByteBuffer): JsDateTime = {
-    val date = LocalDate.ofEpochDay(buffer.getLong)
-    val time = LocalTime.ofNanoOfDay(buffer.getLong)
-    JsDateTime(date, time)
-  }
-
-  def timestamp(buffer: ByteBuffer): JsTimestamp = {
-    val milliseconds = buffer.getLong
-    val nanos = buffer.getInt
-    val timestamp = new Timestamp(milliseconds)
-    timestamp.setNanos(nanos)
-    JsTimestamp(timestamp)
-  }
-
-  def objectId(buffer: ByteBuffer): JsValue = {
-    val id = new Array[Byte](ObjectId.size)
-    buffer.get(id)
-    JsObjectId(ObjectId(id))
-  }
-
-  def string(buffer: ByteBuffer): JsString = {
-    val length = buffer.getInt
-    val dst = new Array[Byte](length)
-    buffer.get(dst)
-    JsString(new String(dst, charset))
-  }
-
-  def binary(buffer: ByteBuffer): JsValue = {
-    val length = buffer.getInt
-    val subtype = buffer.get
-    if (subtype == BINARY_SUBTYPE_UUID) {
-      JsUUID(buffer.getLong, buffer.getLong)
-    } else {
-      val dst = new Array[Byte](length)
-      buffer.get(dst)
-      JsBinary(dst)
-    }
   }
 }
