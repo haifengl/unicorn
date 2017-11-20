@@ -38,7 +38,7 @@ import com.typesafe.scalalogging.Logger
   * @author Haifeng Li
   */
 class Snowflake(val worker: Long, var sequence: Long = 0L) {
-  private lazy val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   import Snowflake.{epoch, workerIdBits, maxWorkerId, sequenceBits}
 
