@@ -360,8 +360,8 @@ object JsString {
   val empty = JsString("")
 }
 
-/** A date without a time-zone in the ISO-8601 calendar system,
-  * such as 2007-12-03.
+/** An immutable date without a time-zone in the ISO-8601 calendar system,
+  * often viewed as year-month-day such as 2007-12-03.
   */
 case class JsDate(value: LocalDate) extends JsValue with Ordered[JsDate] {
   /** The output will be in the ISO-8601 format uuuu-MM-dd. */
@@ -395,9 +395,11 @@ object JsDate {
   def apply(date: String): JsDate = new JsDate(LocalDate.parse(date))
 }
 
-/** A time without a time-zone in the ISO-8601 calendar system,
-  * such as 10:15:30. Often viewed as hour-minute-second, JsTime
-  * can be represented to nanosecond precision.
+/** An immutable time without a time-zone in the ISO-8601 calendar system,
+  * often viewed as hour-minute-second such as 10:15:30. Although LocalTime/JsTime
+  * can be represented to nanosecond precision, a JSON serializer may not
+  * store the nano-of-second field to save the space. To preserve the high
+  * precision of time, JsTimestamp should be employed.
   */
 case class JsTime(value: LocalTime) extends JsValue with Ordered[JsTime] {
   /** The output will be one of the following ISO-8601 formats:
@@ -437,8 +439,11 @@ object JsTime {
   def apply(time: String): JsTime = new JsTime(LocalTime.parse(time))
 }
 
-/** A date-time without a time-zone in the ISO-8601 calendar system,
-  * such as 2007-12-03T10:15:30.
+/** An immutable date-time without a time-zone in the ISO-8601 calendar system,
+  * such as 2007-12-03T10:15:30. Although LocalTime/JsTime
+  * can be represented to nanosecond precision, a JSON serializer may not
+  * store the nano-of-second field to save the space. To preserve the high
+  * precision of time, JsTimestamp should be employed.
   */
 case class JsDateTime(value: LocalDateTime) extends JsValue with Ordered[JsDateTime] {
   /** The output will be one of the following ISO-8601 formats:

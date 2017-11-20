@@ -67,11 +67,15 @@ class JsonSerializerSpec extends Specification {
     }
     "serialize '10:00:00.123'" in {
       val serializer = new JsonSerializer
-      serializer.deserialize(serializer.serialize(JsTime("10:00:00.123"))) === JsTime("10:00:00.123")
+      serializer.deserialize(serializer.serialize(JsTime("10:00:00.123"))) === JsTime("10:00:00")
+    }
+    "serialize '2015-08-10T10:00:00'" in {
+      val serializer = new JsonSerializer
+      serializer.deserialize(serializer.serialize(JsDateTime("2015-08-10T10:00:00"))) === JsDateTime("2015-08-10T10:00:00")
     }
     "serialize '2015-08-10T10:00:00.123'" in {
       val serializer = new JsonSerializer
-      serializer.deserialize(serializer.serialize(JsDateTime("2015-08-10T10:00:00.123"))) === JsDateTime("2015-08-10T10:00:00.123")
+      serializer.deserialize(serializer.serialize(JsDateTime("2015-08-10T10:00:00.123"))) === JsDateTime("2015-08-10T10:00:00")
     }
     "serialize '2015-08-10 10:00:00.123'" in {
       val serializer = new JsonSerializer

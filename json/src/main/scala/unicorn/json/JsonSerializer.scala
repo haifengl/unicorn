@@ -30,6 +30,10 @@ import com.typesafe.scalalogging.Logger
   * Not Multi-threading safe. Each thread should have its own BsonSerializer instance.
   * Data size limit to 10MB by default.
   *
+  * Although JsTime/JsDateTime can be represented to nanosecond precision, we don't
+  * store the nano-of-second field to save the space. To preserve the high
+  * precision of time, JsTimestamp should be employed and of course consumes more space.
+  *
   * @author Haifeng Li
   */
 class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024)) {
@@ -135,20 +139,27 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
   private def serialize(buffer: ByteBuffer, json: JsDate, ename: Option[String]): Unit = {
     buffer.put(TYPE_DATE)
     serialize(buffer, ename)
-    buffer.putLong(json.value.toEpochDay)
+    val value = json.value
+    val date = value.getYear * 10000 + value.getMonthValue * 100 + value.getDayOfMonth
+    buffer.putInt(date)
   }
 
   private def serialize(buffer: ByteBuffer, json: JsTime, ename: Option[String]): Unit = {
     buffer.put(TYPE_TIME)
     serialize(buffer, ename)
-    buffer.putLong(json.value.toNanoOfDay)
+    val value = json.value
+    val time = value.getHour * 10000 + value.getMinute * 100 + value.getSecond
+    buffer.putInt(time)
   }
 
   private def serialize(buffer: ByteBuffer, json: JsDateTime, ename: Option[String]): Unit = {
     buffer.put(TYPE_DATETIME)
     serialize(buffer, ename)
-    buffer.putLong(json.value.toLocalDate.toEpochDay)
-    buffer.putLong(json.value.toLocalTime.toNanoOfDay)
+    val value = json.value
+    val date = value.getYear * 10000 + value.getMonthValue * 100 + value.getDayOfMonth
+    val time = value.getHour * 10000 + value.getMinute * 100 + value.getSecond
+    buffer.putInt(date)
+    buffer.putInt(time)
   }
 
   private def serialize(buffer: ByteBuffer, json: JsTimestamp, ename: Option[String]): Unit = {
@@ -218,16 +229,35 @@ class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024))
   }
 
   private def date(buffer: ByteBuffer): JsDate = {
-    JsDate(buffer.getLong)
+    val value = buffer.getInt
+    val year = value / 10000
+    val month = (value % 10000) / 100
+    val day = value % 100
+    val date = LocalDate.of(year, month, day)
+    JsDate(date)
   }
 
   private def time(buffer: ByteBuffer): JsTime = {
-    JsTime(buffer.getLong)
+    val value = buffer.getInt
+    val hour = value / 10000
+    val minute = (value % 10000) / 100
+    val second = value % 100
+    val time = LocalTime.of(hour, minute, second)
+    JsTime(time)
   }
 
   private def datetime(buffer: ByteBuffer): JsDateTime = {
-    val date = LocalDate.ofEpochDay(buffer.getLong)
-    val time = LocalTime.ofNanoOfDay(buffer.getLong)
+    val value = buffer.getInt
+    val year = value / 10000
+    val month = (value % 10000) / 100
+    val day = value % 100
+    val date = LocalDate.of(year, month, day)
+
+    val value2 = buffer.getInt
+    val hour = value2 / 10000
+    val minute = (value2 % 10000) / 100
+    val second = value2 % 100
+    val time = LocalTime.of(hour, minute, second)
     JsDateTime(date, time)
   }
 
