@@ -17,6 +17,7 @@
 package unicorn.bigtable.hbase
 
 import java.util.Properties
+
 import scala.collection.JavaConverters._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HBaseConfiguration
@@ -24,6 +25,8 @@ import org.apache.hadoop.hbase.HTableDescriptor
 import org.apache.hadoop.hbase.client.ConnectionFactory
 import org.apache.hadoop.hbase.HColumnDescriptor
 import org.apache.hadoop.hbase.TableName
+import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding
+import org.apache.hadoop.hbase.io.compress.Compression
 import unicorn.bigtable._
 
 /** HBase server adapter.
@@ -53,6 +56,9 @@ class HBase(config: Configuration) extends Database[HBaseTable] {
     propNames.foreach { p => tableDesc.setConfiguration(p, props.getProperty(p))}
     families.foreach { family =>
       val desc = new HColumnDescriptor(family)
+      desc.setDataBlockEncoding(DataBlockEncoding.FAST_DIFF)
+      desc.setCompressionType(Compression.Algorithm.SNAPPY)
+      desc.setCompactionCompressionType(Compression.Algorithm.SNAPPY)
       propNames.foreach { p => desc.setConfiguration(p, props.getProperty(p))}
       tableDesc.addFamily(desc)
     }
