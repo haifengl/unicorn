@@ -58,7 +58,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def get(row: ByteArray, family: String, columns: ByteArray*): Seq[Column] = {
+  override def get(row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column] = {
     if (columns.isEmpty) {
       val columns = new ArrayBuffer[Column]
       var iterator = get(row, family, emptyBytes, emptyBytes, 100).iterator
@@ -85,7 +85,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     if (families.isEmpty)
       columnFamilies.map { family => ColumnFamily(family, get(row, family)) }.filter(!_.columns.isEmpty)
     else
-      families.map { case (family, columns) => ColumnFamily(family, get(row, family, columns: _*)) }.filter(!_.columns.isEmpty)
+      families.map { case (family, columns) => ColumnFamily(family, get(row, family, columns)) }.filter(!_.columns.isEmpty)
   }
 
   /** Get a slice of rows.
@@ -113,7 +113,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }.filter(!_.families.isEmpty)
   }
 
-  override def getBatch(rows: Seq[ByteArray], family: String, columns: ByteArray*): Seq[Row] = {
+  override def getBatch(rows: Seq[ByteArray], family: String, columns: Seq[ByteArray]): Seq[Row] = {
     if (columns.isEmpty) {
       rows.map { row =>
         val result = get(row, family)
@@ -170,7 +170,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     client.insert(key, parent, put, consistency)
   }
 
-  override def put(row: ByteArray, family: String, columns: Column*): Unit = {
+  override def put(row: ByteArray, family: String, columns: Seq[Column]): Unit = {
     val key = ByteBuffer.wrap(row)
     val parent = family
     val updates = new java.util.HashMap[ByteBuffer, java.util.Map[String, java.util.List[Mutation]]]
@@ -234,7 +234,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     client.batch_mutate(updates, consistency)
   }
 
-  override def delete(row: ByteArray, family: String, columns: ByteArray*): Unit = {
+  override def delete(row: ByteArray, family: String, columns: Seq[ByteArray]): Unit = {
     val key = ByteBuffer.wrap(row)
 
     if (columns.isEmpty) {
@@ -274,7 +274,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
       }
     } else {
       families.foreach { case (family, columns) =>
-        delete(row, family, columns: _*)
+        delete(row, family, columns)
       }
     }
   }

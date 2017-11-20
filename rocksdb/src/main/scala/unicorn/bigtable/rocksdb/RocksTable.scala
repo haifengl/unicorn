@@ -92,7 +92,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
     Option(rocksdb.get(handles(family), key(row, column))).map(ByteArray(_))
   }
 
-  override def get(row: ByteArray, family: String, columns: ByteArray*): Seq[Column] = {
+  override def get(row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column] = {
     if (columns.isEmpty) {
       val prefix = key(row)
       val values = new scala.collection.mutable.ArrayBuffer[Column](columns.size)
@@ -125,7 +125,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
       }
     } else {
       families.map { case (family, columns) =>
-        ColumnFamily(family, get(row, family, columns: _*))
+        ColumnFamily(family, get(row, family, columns))
       }
     }).filter(!_.columns.isEmpty)
   }
@@ -136,9 +136,9 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
     }.filter(!_.families.isEmpty)
   }
 
-  override def getBatch(rows: Seq[ByteArray], family: String, columns: ByteArray*): Seq[Row] = {
+  override def getBatch(rows: Seq[ByteArray], family: String, columns: Seq[ByteArray]): Seq[Row] = {
     rows.map { row =>
-      Row(row, Seq(ColumnFamily(family, get(row, family, columns: _*))))
+      Row(row, Seq(ColumnFamily(family, get(row, family, columns))))
     }.filter(!_.families.isEmpty)
   }
 
@@ -146,7 +146,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
     rocksdb.put(handles(family), key(row, column), value)
   }
 
-  override def put(row: ByteArray, family: String, columns: Column*): Unit = {
+  override def put(row: ByteArray, family: String, columns: Seq[Column]): Unit = {
     val batch = new WriteBatch
     columns.foreach { column =>
       batch.put(handles(family), key(row, column.qualifier), column.value)
@@ -170,7 +170,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
     }
   }
 
-  override def delete(row: ByteArray, family: String, columns: ByteArray*): Unit = {
+  override def delete(row: ByteArray, family: String, columns: Seq[ByteArray]): Unit = {
     if (columns.isEmpty) {
       val prefix = key(row)
       val it = rocksdb.newIterator(handles(family))
@@ -203,7 +203,7 @@ class RocksTable(val path: String, val options: DBOptions = new DBOptions) exten
       }
     } else {
       families.foreach { case (family, columns) =>
-        delete(row, family, columns: _*)
+        delete(row, family, columns)
       }
     }
   }

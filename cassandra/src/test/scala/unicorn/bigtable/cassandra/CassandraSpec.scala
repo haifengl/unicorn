@@ -21,7 +21,6 @@ import java.nio.ByteBuffer
 import org.specs2.mutable._
 import org.specs2.specification.BeforeAfterAll
 import unicorn.bigtable._
-import unicorn.util._
 
 /**
  * @author Haifeng Li
@@ -56,7 +55,7 @@ class CassandraSpec extends Specification with BeforeAfterAll {
     }
 
     "get the family" in {
-      table.put("row1", "cf1", Column("c1", "v1"), Column("c2", "v2"))
+      table.put("row1", "cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))
       val columns = table.get("row1", "cf1")
       columns.size === 2
       new String(columns(0).value, utf8) === "v1"

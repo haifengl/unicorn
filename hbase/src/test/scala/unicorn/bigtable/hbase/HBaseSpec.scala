@@ -21,7 +21,6 @@ import java.nio.ByteBuffer
 import org.specs2.mutable._
 import org.specs2.specification.BeforeAfterAll
 import unicorn.bigtable._
-import unicorn.util.utf8
 
 /**
  * @author Haifeng Li
@@ -53,7 +52,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
     }
 
     "get the family" in {
-      table.put("row1", "cf1", Column("c1", "v1"), Column("c2", "v2"))
+      table.put("row1", "cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))
       val columns = table.get("row1", "cf1")
       columns.size === 2
       new String(columns(0).value, utf8) === "v1"
@@ -200,7 +199,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       val prefix = "row"
       import ScanFilter.CompareOperator._
       val filter = ScanFilter.BasicExpression(Equal, "cf1", "c1", "21")
-      val scanner = table.filterScanPrefix(filter, prefix)
+      val scanner = table.scan(filter, prefix)
       val r1 = scanner.next
       new String(r1.key, utf8) === "row2"
       scanner.hasNext === false
@@ -230,7 +229,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
         ScanFilter.BasicExpression(Greater, "cf1", "c1", "11"),
         ScanFilter.BasicExpression(Greater, "cf1", "c2", "22"))
       )
-      val scanner = table.filterScanPrefix(filter, prefix)
+      val scanner = table.scan(filter, prefix)
       val r1 = scanner.next
       new String(r1.key, utf8) === "row3"
       scanner.hasNext === false
@@ -260,7 +259,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
         ScanFilter.BasicExpression(Less, "cf1", "c1", "21"),
         ScanFilter.BasicExpression(GreaterOrEqual, "cf1", "c1", "31"))
       )
-      val scanner = table.filterScanPrefix(filter, prefix)
+      val scanner = table.scan(filter, prefix)
       val r1 = scanner.next
       new String(r1.key, utf8) === "row1"
       val r3 = scanner.next
