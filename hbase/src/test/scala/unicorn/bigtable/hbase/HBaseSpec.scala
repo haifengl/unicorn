@@ -46,7 +46,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
   "HBase" should {
     "get the put" in {
       table.put("row1", "cf1", "c1", "v1", 0L)
-      new String(table("row1", "cf1", "c1").get, utf8) === "v1"
+      new String(table("row1", "cf1", "c1").get, UTF8) === "v1"
       table.delete("row1", "cf1", "c1")
       table("row1", "cf1", "c1") === None
     }
@@ -55,8 +55,8 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       table.put("row1", "cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))
       val columns = table.get("row1", "cf1")
       columns.size === 2
-      new String(columns(0).value, utf8) === "v1"
-      new String(columns(1).value, utf8) === "v2"
+      new String(columns(0).value, UTF8) === "v1"
+      new String(columns(1).value, UTF8) === "v2"
 
       table.delete("row1", "cf1")
       val empty = table.get("row1", "cf1")
@@ -84,9 +84,9 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       families(0).family === "cf1"
       families(1).family === "cf2"
 
-      new String(families(0).columns(0).value, utf8) === "v1"
-      new String(families(0).columns(1).value, utf8) === "v2"
-      new String(families(1).columns(0).value, utf8) === "v3"
+      new String(families(0).columns(0).value, UTF8) === "v1"
+      new String(families(0).columns(1).value, UTF8) === "v2"
+      new String(families(1).columns(0).value, UTF8) === "v3"
 
       table.delete("row1", "cf1")
       val cf1 = table.get("row1", "cf1")
@@ -140,12 +140,12 @@ class HBaseSpec extends Specification with BeforeAfterAll {
 
       val scanner = table.scan("row1", "row3")
       val r1 = scanner.next
-      new String(r1.key, utf8) === "row1"
+      new String(r1.key, UTF8) === "row1"
       r1.families(0).family === "cf1"
       r1.families(1).family === "cf2"
 
       val r2 = scanner.next
-      new String(r2.key, utf8) === "row2"
+      new String(r2.key, UTF8) === "row2"
       scanner.hasNext === false
       scanner.close
 
@@ -170,11 +170,11 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       val prefix = "row"
       val scanner = table.scanPrefix(prefix)
       val r1 = scanner.next
-      new String(r1.key, utf8) === "row1"
+      new String(r1.key, UTF8) === "row1"
       val r2 = scanner.next
-      new String(r2.key, utf8) === "row2"
+      new String(r2.key, UTF8) === "row2"
       val r3 = scanner.next
-      new String(r3.key, utf8) === "row3"
+      new String(r3.key, UTF8) === "row3"
       scanner.hasNext === false
       scanner.close
 
@@ -201,7 +201,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       val filter = ScanFilter.BasicExpression(Equal, "cf1", "c1", "21")
       val scanner = table.scan(filter, prefix)
       val r1 = scanner.next
-      new String(r1.key, utf8) === "row2"
+      new String(r1.key, UTF8) === "row2"
       scanner.hasNext === false
       scanner.close
 
@@ -231,7 +231,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       )
       val scanner = table.scan(filter, prefix)
       val r1 = scanner.next
-      new String(r1.key, utf8) === "row3"
+      new String(r1.key, UTF8) === "row3"
       scanner.hasNext === false
       scanner.close
 
@@ -261,9 +261,9 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       )
       val scanner = table.scan(filter, prefix)
       val r1 = scanner.next
-      new String(r1.key, utf8) === "row1"
+      new String(r1.key, UTF8) === "row1"
       val r3 = scanner.next
-      new String(r3.key, utf8) === "row3"
+      new String(r3.key, UTF8) === "row3"
       scanner.hasNext === false
       scanner.close
 
@@ -273,7 +273,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
     }
 
     "intra row scan" in {
-      table.put("row1".getBytes(utf8), Seq(
+      table.put("row1".getBytes(UTF8), Seq(
         ColumnFamily("cf1", (1 to 1000).map { i =>
           val bytes = ByteBuffer.allocate(4).putInt(i).array
           Column(bytes, bytes)
@@ -298,9 +298,9 @@ class HBaseSpec extends Specification with BeforeAfterAll {
     "rollback" in {
       table.put("row1", "cf1", "c1", "v1", 0L)
       table.put("row1", "cf1", "c1", "v2", 0L)
-      new String(table("row1", "cf1", "c1").get, utf8) === "v2"
+      new String(table("row1", "cf1", "c1").get, UTF8) === "v2"
       table.rollback("row1", "cf1", "c1")
-      new String(table("row1", "cf1", "c1").get, utf8) === "v1"
+      new String(table("row1", "cf1", "c1").get, UTF8) === "v1"
       table.rollback("row1", "cf1", "c1")
       table("row1", "cf1", "c1") === None
       table.delete("row1", "cf1", "c1")
@@ -310,7 +310,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
     "append" in {
       table.put("row1", "cf1", "c1", "v1", 0L)
       table.append("row1", "cf1", "c1", "v2")
-      new String(table("row1", "cf1", "c1").get, utf8) === "v1v2"
+      new String(table("row1", "cf1", "c1").get, UTF8) === "v1v2"
       table.delete("row1", "cf1", "c1")
       table("row1", "cf1", "c1") === None
     }

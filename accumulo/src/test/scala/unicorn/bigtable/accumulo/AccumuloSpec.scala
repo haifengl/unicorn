@@ -44,17 +44,17 @@ class AccumuloSpec extends Specification with BeforeAfterAll {
   "Accumulo" should {
     "get the put" in {
       table.put("row1", "cf1", "c1", "v1", 0L)
-      new String(table("row1", "cf1", "c1").get, utf8) === "v1"
+      new String(table("row1", "cf1", "c1").get, UTF8) === "v1"
       table.delete("row1", "cf1", "c1")
-      table("row1", "cf1", "c1".getBytes(utf8)) === None
+      table("row1", "cf1", "c1".getBytes(UTF8)) === None
     }
 
     "get the family" in {
       table.put("row1", "cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))
       val columns = table.get("row1", "cf1")
       columns.size === 2
-      new String(columns(0).value, utf8) === "v1"
-      new String(columns(1).value, utf8) === "v2"
+      new String(columns(0).value, UTF8) === "v1"
+      new String(columns(1).value, UTF8) === "v2"
 
       table.delete("row1", "cf1")
       val empty = table.get("row1", "cf1")
@@ -83,9 +83,9 @@ class AccumuloSpec extends Specification with BeforeAfterAll {
       families(0).family === "cf1"
       families(1).family === "cf2"
 
-      new String(families(0).columns(0).value, utf8) === "v1"
-      new String(families(0).columns(1).value, utf8) === "v2"
-      new String(families(1).columns(0).value, utf8) === "v3"
+      new String(families(0).columns(0).value, UTF8) === "v1"
+      new String(families(0).columns(1).value, UTF8) === "v2"
+      new String(families(1).columns(0).value, UTF8) === "v3"
 
       table.delete("row1", "cf1")
       val cf1 = table.get("row1", "cf1")
@@ -110,7 +110,7 @@ class AccumuloSpec extends Specification with BeforeAfterAll {
         Seq(ColumnFamily("cf1", Seq(Column("c1", "v1"), Column("c2", "v2"))),
           ColumnFamily("cf2", Seq(Column("c3", "v3")))))
 
-      val row2 = Row("row2".getBytes(utf8),
+      val row2 = Row("row2".getBytes(UTF8),
         Seq(ColumnFamily("cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))))
 
       table.putBatch(row1, row2)
@@ -130,21 +130,21 @@ class AccumuloSpec extends Specification with BeforeAfterAll {
         Seq(ColumnFamily("cf1", Seq(Column("c1", "v1"), Column("c2", "v2"))),
           ColumnFamily("cf2", Seq(Column("c3", "v3")))))
 
-      val row2 = Row("row2".getBytes(utf8),
+      val row2 = Row("row2".getBytes(UTF8),
         Seq(ColumnFamily("cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))))
 
-      val row3 = Row("row3".getBytes(utf8),
+      val row3 = Row("row3".getBytes(UTF8),
         Seq(ColumnFamily("cf1", Seq(Column("c1", "v1"), Column("c2", "v2")))))
 
       table.putBatch(row1, row2, row3)
 
       val scanner = table.scan("row1", "row3")
       val r1 = scanner.next
-      new String(r1.key, utf8) === "row1"
+      new String(r1.key, UTF8) === "row1"
       r1.families(0).family === "cf1"
       r1.families(1).family === "cf2"
       val r2 = scanner.next
-      new String(r2.key, utf8) === "row2"
+      new String(r2.key, UTF8) === "row2"
       scanner.hasNext === false
       scanner.close
 

@@ -24,12 +24,12 @@ import java.nio.charset.Charset
   */
 package object bigtable {
 
-  val utf8 = Charset.forName("UTF-8")
+  val UTF8 = Charset.forName("UTF-8")
 
   implicit def boxByteArray(x: Array[Byte]) = new ByteArray(x)
   implicit def unboxByteArray(x: ByteArray) = x.bytes
-  implicit def string2Bytes(x: String) = x.getBytes(utf8)
-  implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(utf8))
+  implicit def string2Bytes(x: String) = x.getBytes(UTF8)
+  implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(UTF8))
 
   /** Helper function convert ByteBuffer to Array[Byte]. */
   implicit def byteBuffer2ArrayByte(buffer: ByteBuffer): Array[Byte] = {

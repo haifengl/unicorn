@@ -456,7 +456,7 @@ object HBaseTable {
           Column(column, value, timestamp)
         }
       }.toSeq
-      ColumnFamily(new String(family, utf8), values)
+      ColumnFamily(new String(family, UTF8), values)
     }.toSeq
     Row(result.getRow, families)
   }
