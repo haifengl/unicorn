@@ -14,7 +14,7 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn.util
+package unicorn.bigtable
 
 /**
  * Pimped byte array.
@@ -25,11 +25,10 @@ case class ByteArray(bytes: Array[Byte]) extends Ordered[ByteArray] {
   /** Flip each bit of a byte string */
   def unary_~ = ByteArray(bytes.map { b => (~b).toByte })
 
-  /** Hexadecimal string representation */
-  def hex = bytes2Hex(bytes)
-
-  /** Covert UTF-8 bytes back to string */
-  override def toString = new String(bytes, utf8)
+  /** Hexadecimal string representation. */
+  override def toString = {
+    bytes.map("%02X" format _).mkString
+  }
 
   override def compare(that: ByteArray): Int = compareByteArray(bytes, that.bytes)
 

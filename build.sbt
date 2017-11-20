@@ -57,21 +57,21 @@ lazy val nonPubishSettings = commonSettings ++ Seq(
 lazy val root = project.in(file(".")).settings(nonPubishSettings: _*)
   .aggregate(util, snowflake, json, bigtable, hbase, cassandra, accumulo, rocksdb, unibase, narwhal, sql, shell)
 
+lazy val json = project.in(file("json")).settings(commonSettings: _*)
+
 lazy val util = project.in(file("util")).settings(commonSettings: _*)
 
 lazy val snowflake = project.in(file("snowflake")).settings(commonSettings: _*).dependsOn(util)
 
-lazy val json = project.in(file("json")).settings(commonSettings: _*)
-
-lazy val bigtable = project.in(file("bigtable")).settings(commonSettings: _*).dependsOn(util)
+lazy val bigtable = project.in(file("bigtable")).settings(commonSettings: _*)
 
 lazy val hbase = project.in(file("hbase")).settings(commonSettings: _*).dependsOn(bigtable)
 
 lazy val accumulo = project.in(file("accumulo")).settings(commonSettings: _*).dependsOn(bigtable)
 
-lazy val cassandra = project.in(file("cassandra")).settings(commonSettings: _*).dependsOn(bigtable, util)
+lazy val cassandra = project.in(file("cassandra")).settings(commonSettings: _*).dependsOn(bigtable)
 
-lazy val rocksdb = project.in(file("rocksdb")).settings(commonSettings: _*).dependsOn(bigtable, util)
+lazy val rocksdb = project.in(file("rocksdb")).settings(commonSettings: _*).dependsOn(bigtable)
 
 //lazy val index = project.in(file("index")).settings(nonPubishSettings: _*).dependsOn(bigtable, json, hbase % "test")
 

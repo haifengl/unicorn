@@ -17,7 +17,6 @@
 package unicorn.bigtable
 
 import java.util.Date
-import unicorn.util._
 
 /** Key of Cell */
 case class CellKey(row: ByteArray, family: String, qualifier: ByteArray, timestamp: Long)
