@@ -16,30 +16,31 @@
 
 package unicorn.json
 
-import java.nio.charset.Charset
-import java.nio.{ByteBuffer, ByteOrder}
-import unicorn.util._
+import java.nio.ByteBuffer
+import JsonSerializer._
 
-/**
- * This JSON Serializer recursively encodes each field to a byte string, which can
- * be saved separately to a column in BigTable. The JsonPath of field can be used
- * as the column name.
- * <p>
- * Not Multi-threading safe. Each thread should have its own ColumnarJsonSerializer instance.
- * <p>
- * ByteBuffer must use BIG ENDIAN to ensure the correct byte string comparison for
- * integers and floating numbers.
- *
- * @author Haifeng Li
- */
-class ColumnarJsonSerializer(
-  buffer: ByteBuffer = ByteBuffer.allocate(16 * 1024 * 1024),
-  val charset: Charset = utf8,
+/** This JSON Serializer recursively encodes each field to a byte string, which can
+  * be saved separately to a column in BigTable. The JsonPath of field can be used
+  * as the column name.
+  *
+  * Not Multi-threading safe. Each thread should have its own ColumnarSerializer instance.
+  *
+  * @author Haifeng Li
+  */
+class ColumnarSerializer(
+  buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024),
   val root: String = "$",
   val pathDelimiter: String = "."
-) extends BaseJsonSerializer {
+) {
 
-  require(buffer.order == ByteOrder.BIG_ENDIAN)
+  /** Serialize a string to bytes. */
+  def str2Bytes(s: String) = s.getBytes(JsonSerializer.charset)
+
+  /** Returns the json path of a dot notation path as in MongoDB. */
+  def str2Path(path: String) = s"${root}${pathDelimiter}$path"
+
+  /** Returns the byte array of json path */
+  def str2PathBytes(path: String) = str2Bytes(str2Path(path))
 
   private def jsonPath(parent: String, field: String) = s"%s${pathDelimiter}%s".format(parent, field)
 
@@ -56,79 +57,79 @@ class ColumnarJsonSerializer(
 
   def serialize(json: JsBoolean): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsInt): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsLong): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsDouble): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsDecimal): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsString): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsDate): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsTime): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsDateTime): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsTimestamp): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsObjectId): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsUUID): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
   def serialize(json: JsBinary): Array[Byte] = {
     buffer.clear
-    serialize(buffer, json, None)
+    JsonSerializer.serialize(buffer, json, None)
     buffer
   }
 
@@ -141,7 +142,7 @@ class ColumnarJsonSerializer(
   private def serialize(json: JsObject, root: String, map: collection.mutable.Map[String, Array[Byte]]): Unit = {
     buffer.clear
     buffer.put(TYPE_DOCUMENT)
-    json.fields.foreach { case (field, _) => serialize(buffer, Some(field)) }
+    json.fields.foreach { case (field, _) => JsonSerializer.serialize(buffer, Some(field)) }
     map(root) = buffer
 
     json.fields.foreach { case (field, value) =>
@@ -183,13 +184,13 @@ class ColumnarJsonSerializer(
     }
   }
 
-  override def serialize(json: JsValue, jsonPath: String): Map[String, Array[Byte]] = {
+  def serialize(json: JsValue, jsonPath: String): Map[String, Array[Byte]] = {
     val map = collection.mutable.Map[String, Array[Byte]]()
     serialize(json, jsonPath, map)
     map.toMap
   }
 
-  override def deserialize(values: Map[String, Array[Byte]], rootJsonPath: String): JsValue = {
+  def deserialize(values: Map[String, Array[Byte]], rootJsonPath: String = root): JsValue = {
     val bytes = values.get(rootJsonPath)
     if (bytes.isEmpty) return JsUndefined
 

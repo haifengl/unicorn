@@ -19,7 +19,6 @@ package unicorn.json
 import java.time.{LocalDate, LocalTime, LocalDateTime}
 import java.sql.Timestamp
 import scala.collection.mutable.ArrayBuffer
-import unicorn.util._
 
 /** Data frame of named columns.
   *
@@ -164,6 +163,44 @@ class DataFrame(val columnNames: Seq[String], val rows: Seq[Row], val explain: O
     }
 
     sb.toString()
+  }
+
+  /** Left pad a String with a specified character.
+    *
+    * @param str  the String to pad out, may be null
+    * @param size  the size to pad to
+    * @param padChar  the character to pad with
+    * @return left padded String or original String if no padding is necessary,
+    *         null if null String input
+    */
+  private def leftPad(str: String, size: Int, padChar: Char = ' '): String = {
+    if (str == null)
+      return null
+
+    val pads = size - str.length
+    if (pads <= 0)
+      return str // returns original String when possible
+
+    return (String.valueOf(padChar) * pads).concat(str)
+  }
+
+  /** Right pad a String with a specified character.
+    *
+    * @param str  the String to pad out, may be null
+    * @param size  the size to pad to
+    * @param padChar  the character to pad with
+    * @return left padded String or original String if no padding is necessary,
+    *         null if null String input
+    */
+  private def rightPad(str: String, size: Int, padChar: Char = ' '): String = {
+    if (str == null)
+      return null
+
+    val pads = size - str.length
+    if (pads <= 0)
+      return str // returns original String when possible
+
+    return str.concat(String.valueOf(padChar) * pads)
   }
 }
 

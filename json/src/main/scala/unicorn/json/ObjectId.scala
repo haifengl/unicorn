@@ -19,7 +19,6 @@ package unicorn.json
 import java.nio.ByteBuffer
 import java.util.{Arrays, Date}
 import scala.util.Try
-import unicorn.util._
 
 /**
  * BSON's 12-byte ObjectId type, constructed using:
@@ -30,20 +29,16 @@ import unicorn.util._
  *
  * The implementation is adopt from ReactiveMongo.
  */
-case class ObjectId(id: Array[Byte]) extends Comparable[ObjectId] {
+case class ObjectId(id: Array[Byte]) {
   require(id.size == ObjectId.size)
 
   override def equals(that: Any): Boolean = {
     that.isInstanceOf[ObjectId] && Arrays.equals(id, that.asInstanceOf[ObjectId].id)
   }
 
-  override def compareTo(o: ObjectId): Int = {
-    compareByteArray(id, o.id)
-  }
-
   /** In the form of a string literal "ObjectId(...)" */
   override def toString: String = {
-    s"""ObjectId(${bytes2Hex(id)})"""
+    s"""ObjectId(${ObjectId.bytes2hex(id)})"""
   }
 
   /** The timestamp port of ObjectId object as a Date */
@@ -54,10 +49,31 @@ object ObjectId {
   /** ObjectId byte array size */
   val size = 12
 
+  private val md5Encoder = java.security.MessageDigest.getInstance("MD5")
+
+  /** MD5 hash function */
+  private def md5(bytes: Array[Byte]) = md5Encoder.digest(bytes)
+
   private val maxCounterValue = 16777216
   private val increment = new java.util.concurrent.atomic.AtomicInteger(scala.util.Random.nextInt(maxCounterValue))
 
   private def counter = (increment.getAndIncrement + maxCounterValue) % maxCounterValue
+
+  /** Byte array to hexadecimal string. */
+  def bytes2hex(bytes: Array[Byte]): String = {
+    bytes.map("%02X" format _).mkString
+  }
+
+  /** Hexadecimal string to byte array. */
+  def hex2bytes(s: String): Array[Byte] = {
+    require(s.length % 2 == 0, "Hexadecimal string must contain an even number of characters")
+
+    val bytes = new Array[Byte](s.length / 2)
+    for (i <- 0 until s.length by 2) {
+      bytes(i/2) = java.lang.Integer.parseInt(s.substring(i, i+2), 16).toByte
+    }
+    bytes
+  }
 
   /**
    * The following implementation of machineId work around openjdk limitations in
@@ -122,7 +138,7 @@ object ObjectId {
   def apply(id: String): ObjectId = {
     require(id.length == 24, s"wrong ObjectId: '$id'")
     /** Constructs a BSON ObjectId element from a hexadecimal String representation */
-    new ObjectId(hex2Bytes(id))
+    new ObjectId(hex2bytes(id))
   }
 
   /** Tries to make a BSON ObjectId element from a hexadecimal String representation. */

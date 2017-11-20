@@ -16,103 +16,27 @@
 
 package unicorn.json
 
-import java.nio.{ByteBuffer, ByteOrder}
-import java.nio.charset.Charset
-import unicorn.util._
+import java.nio.ByteBuffer
+import com.typesafe.scalalogging.Logger
+import JsonSerializer._
 
-/**
- * JSON Serializer in BSON format as defined by http://bsonspec.org/spec.html.
- * This is not fully compatible with BSON spec, where the root must be a document/JsObject.
- * In contrast, the root can be any JsValue in our implementation. Correspondingly, the
- * root will always has the type byte as the first byte.
- * <p>
- * Not Multi-threading safe. Each thread should have its own BsonSerializer instance.
- * Data size limit to 16MB by default.
- * <p>
- * ByteBuffer must use BIG ENDIAN to ensure the correct byte string comparison for
- * integers and floating numbers.
- *
- * @author Haifeng Li
- */
-class BsonSerializer(
-  buffer: ByteBuffer = ByteBuffer.allocate(16 * 1024 * 1024),
-  val charset: Charset = utf8,
-  val root: String = "$",
-  val pathDelimiter: String = "."
-) extends BaseJsonSerializer with Logging {
+/** JSON Serializer in BSON format as defined by http://bsonspec.org/spec.html.
+  * This is not fully compatible with BSON spec, where the root must be a document/JsObject.
+  * In contrast, the root can be any JsValue in our implementation. Correspondingly, the
+  * root will always has the type byte as the first byte.
+  *
+  * Not Multi-threading safe. Each thread should have its own BsonSerializer instance.
+  * Data size limit to 10MB by default.
+  *
+  * @author Haifeng Li
+  */
+class BsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024)) {
+  private lazy val logger = Logger(getClass)
 
-  require(buffer.order == ByteOrder.BIG_ENDIAN)
-
-  override def serialize(json: JsValue, rootJsonPath: String): Map[String, Array[Byte]] = {
+  def serialize(json: JsValue): Array[Byte] = {
     buffer.clear
-    serialize(json, None)(buffer)
-    Map(rootJsonPath -> buffer)
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsObject, ename: Option[String]): Unit = {
-    buffer.put(TYPE_DOCUMENT)
-    serialize(buffer, ename)
-
-    val start = buffer.position
-    buffer.putInt(0) // placeholder for document size
-
-    json.fields.toSeq.sortBy(_._1).foreach { case (field, value) =>
-      serialize(value, Some(field))(buffer)
-    }
-
-    buffer.put(END_OF_DOCUMENT)
-    buffer.putInt(start, buffer.position - start) // update document size
-  }
-
-  def serialize(buffer: ByteBuffer, json: JsArray, ename: Option[String]): Unit = {
-    buffer.put(TYPE_ARRAY)
-    serialize(buffer, ename)
-
-    val start = buffer.position
-    buffer.putInt(0) // placeholder for document size
-
-    json.elements.zipWithIndex.foreach { case (value, index) =>
-      serialize(value, Some(index.toString))(buffer)
-    }
-
-    buffer.put(END_OF_DOCUMENT)
-    buffer.putInt(start, buffer.position - start) // update document size
-  }
-
-  /** Serializes a JSON value into the object buffer. */
-  def put(json: JsValue): Unit = {
-    serialize(json, None)(buffer)
-  }
-
-  private def serialize(json: JsValue, ename: Option[String])(implicit buffer: ByteBuffer): Unit = {
-    json match {
-      case x: JsBoolean  => serialize(buffer, x, ename)
-      case x: JsInt      => serialize(buffer, x, ename)
-      case x: JsLong     => serialize(buffer, x, ename)
-      case x: JsDouble   => serialize(buffer, x, ename)
-      case x: JsDecimal  => serialize(buffer, x, ename)
-      case x: JsString   => serialize(buffer, x, ename)
-      case x: JsDate     => serialize(buffer, x, ename)
-      case x: JsTime     => serialize(buffer, x, ename)
-      case x: JsDateTime => serialize(buffer, x, ename)
-      case x: JsTimestamp=> serialize(buffer, x, ename)
-      case x: JsUUID     => serialize(buffer, x, ename)
-      case x: JsObjectId => serialize(buffer, x, ename)
-      case x: JsBinary   => serialize(buffer, x, ename)
-      case x: JsObject   => serialize(buffer, x, ename)
-      case x: JsArray    => serialize(buffer, x, ename)
-      case JsNull        => buffer.put(TYPE_NULL); serialize(buffer, ename)
-      case JsUndefined   => buffer.put(TYPE_UNDEFINED); serialize(buffer, ename)
-      case JsCounter(_)  => throw new IllegalArgumentException("BSON doesn't support JsCounter")
-    }
-  }
-
-  override def deserialize(values: Map[String, Array[Byte]], rootJsonPath: String): JsValue = {
-    val bytes = values.get(rootJsonPath)
-    require(!bytes.isEmpty, s"""root $rootJsonPath doesn't exist""")
-
-    val buffer = ByteBuffer.wrap(bytes.get)
-    deserialize(buffer)
+    serialize(buffer, json, None)
+    buffer
   }
 
   def deserialize(bytes: Array[Byte]): JsValue = {
@@ -120,7 +44,60 @@ class BsonSerializer(
     deserialize(buffer)
   }
 
-  def deserialize(buffer: ByteBuffer, json: JsObject): JsObject = {
+  private def serialize(buffer: ByteBuffer, json: JsObject, ename: Option[String]): Unit = {
+    buffer.put(TYPE_DOCUMENT)
+    JsonSerializer.serialize(buffer, ename)
+
+    val start = buffer.position
+    buffer.putInt(0) // placeholder for document size
+
+    json.fields.toSeq.sortBy(_._1).foreach { case (field, value) =>
+      serialize(buffer, value, Some(field))
+    }
+
+    buffer.put(END_OF_DOCUMENT)
+    buffer.putInt(start, buffer.position - start) // update document size
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsArray, ename: Option[String]): Unit = {
+    buffer.put(TYPE_ARRAY)
+    JsonSerializer.serialize(buffer, ename)
+
+    val start = buffer.position
+    buffer.putInt(0) // placeholder for document size
+
+    json.elements.zipWithIndex.foreach { case (value, index) =>
+      serialize(buffer, value, Some(index.toString))
+    }
+
+    buffer.put(END_OF_DOCUMENT)
+    buffer.putInt(start, buffer.position - start) // update document size
+  }
+
+  private def serialize(buffer: ByteBuffer, json: JsValue, ename: Option[String]): Unit = {
+    json match {
+      case x: JsBoolean  => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsInt      => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsLong     => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsDouble   => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsDecimal  => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsString   => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsDate     => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsTime     => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsDateTime => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsTimestamp=> JsonSerializer.serialize(buffer, x, ename)
+      case x: JsUUID     => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsObjectId => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsBinary   => JsonSerializer.serialize(buffer, x, ename)
+      case x: JsObject   => serialize(buffer, x, ename)
+      case x: JsArray    => serialize(buffer, x, ename)
+      case JsNull        => buffer.put(TYPE_NULL); JsonSerializer.serialize(buffer, ename)
+      case JsUndefined   => buffer.put(TYPE_UNDEFINED); JsonSerializer.serialize(buffer, ename)
+      case JsCounter(_)  => throw new IllegalArgumentException("BSON doesn't support JsCounter")
+    }
+  }
+
+  private def deserialize(buffer: ByteBuffer, json: JsObject): JsObject = {
     val start = buffer.position
     val size = buffer.getInt // document size
 
@@ -159,7 +136,7 @@ class BsonSerializer(
     }
 
     if (buffer.position - start != size)
-      log.warn(s"BSON size $size but deserialize finishes at ${buffer.position}, starts at $start")
+      logger.warn(s"BSON size $size but deserialize finishes at ${buffer.position}, starts at $start")
 
     json
   }
@@ -196,7 +173,4 @@ class BsonSerializer(
 
   /** Clears the object buffer. */
   def clear: Unit = buffer.clear
-
-  /** Returns the object buffer content as a byte array. */
-  def toBytes: Array[Byte] = buffer
 }
