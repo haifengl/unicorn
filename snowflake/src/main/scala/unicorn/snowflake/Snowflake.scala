@@ -16,7 +16,7 @@
 
 package unicorn.snowflake
 
-import unicorn.util.Logging
+import com.typesafe.scalalogging.Logger
 
 /** 64 bit ID generator based on Twitter Snowflake.
   * An id is composed of:
@@ -37,7 +37,9 @@ import unicorn.util.Logging
   *
   * @author Haifeng Li
   */
-class Snowflake(val worker: Long, var sequence: Long = 0L) extends Logging {
+class Snowflake(val worker: Long, var sequence: Long = 0L) {
+  private lazy val logger = Logger(getClass)
+
   import Snowflake.{epoch, workerIdBits, maxWorkerId, sequenceBits}
 
   private val workerIdShift = sequenceBits
@@ -51,13 +53,13 @@ class Snowflake(val worker: Long, var sequence: Long = 0L) extends Logging {
     throw new IllegalArgumentException(s"worker Id can't be greater than $maxWorkerId or less than 0")
   }
 
-  log.info(s"worker starting. timestamp left shift $timestampLeftShift, worker id bits $workerIdBits, sequence bits $sequenceBits, worker id $worker")
+  logger.info(s"worker starting. timestamp left shift $timestampLeftShift, worker id bits $workerIdBits, sequence bits $sequenceBits, worker id $worker")
 
   def next: Long = {
     var timestamp = System.currentTimeMillis
 
     if (timestamp < lastTimestamp) {
-      log.error("clock is moving backwards. Rejecting requests until {}.", lastTimestamp)
+      logger.error("clock is moving backwards. Rejecting requests until {}.", lastTimestamp)
       throw new IllegalStateException(s"Clock moved backwards. Refusing to generate id for ${lastTimestamp - timestamp} milliseconds")
     }
 
@@ -85,9 +87,10 @@ class Snowflake(val worker: Long, var sequence: Long = 0L) extends Logging {
   }
 }
 
-object Snowflake extends Logging {
-  val epoch = 1463322997653L
+object Snowflake {
+  lazy val logger = Logger(getClass)
 
+  val epoch = 1463322997653L
   val workerIdBits = 10L
   val maxWorkerId = -1L ^ (-1L << workerIdBits)
   val sequenceBits = 12L
@@ -104,7 +107,7 @@ object Snowflake extends Logging {
     import java.util.concurrent.CountDownLatch
     import org.apache.zookeeper._, KeeperException.NodeExistsException
 
-    log.debug("Create Snowflake worker with ZooKeeper {}", zookeeper)
+    logger.debug("Create Snowflake worker with ZooKeeper {}", zookeeper)
 
     val connectedSignal = new CountDownLatch(1)
     val zk = new ZooKeeper(zookeeper, 5000, new Watcher {
@@ -120,7 +123,7 @@ object Snowflake extends Logging {
     for (i <- 2 to path.length) {
       val parent = path.slice(1, i).mkString("/", "/", "")
       if (zk.exists(parent, false) == null) {
-        log.info("ZooKeeper group {} doesn't exist. Create it.", parent)
+        logger.info("ZooKeeper group {} doesn't exist. Create it.", parent)
         zk.create(parent, null, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
       }
     }
@@ -131,7 +134,7 @@ object Snowflake extends Logging {
         return new Snowflake(worker, sequence)
       } catch {
         case e: NodeExistsException =>
-          log.debug("ZooKeeper node {}/{} already exists.", group, worker)
+          logger.debug("ZooKeeper node {}/{} already exists.", group, worker)
       }
     }
 

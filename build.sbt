@@ -61,7 +61,7 @@ lazy val json = project.in(file("json")).settings(commonSettings: _*)
 
 lazy val util = project.in(file("util")).settings(commonSettings: _*)
 
-lazy val snowflake = project.in(file("snowflake")).settings(commonSettings: _*).dependsOn(util)
+lazy val snowflake = project.in(file("snowflake")).settings(commonSettings: _*)
 
 lazy val bigtable = project.in(file("bigtable")).settings(commonSettings: _*)
 
