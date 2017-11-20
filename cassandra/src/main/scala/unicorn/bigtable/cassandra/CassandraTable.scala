@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
 
   private val emptyBytes = Array[Byte]()
 
-  override def apply(row: ByteArray, family: String, column: ByteArray): Option[ByteArray] = {
+  override def apply(row: Array[Byte], family: String, column: Array[Byte]): Option[Array[Byte]] = {
     val key = ByteBuffer.wrap(row)
     val path = new ColumnPath(family).setColumn(column)
 
@@ -58,7 +58,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def get(row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column] = {
+  override def get(row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Seq[Column] = {
     if (columns.isEmpty) {
       val columns = new ArrayBuffer[Column]
       var iterator = get(row, family, emptyBytes, emptyBytes, 100).iterator
@@ -81,7 +81,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def get(row: ByteArray, families: Seq[(String, Seq[ByteArray])]): Seq[ColumnFamily] = {
+  override def get(row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): Seq[ColumnFamily] = {
     if (families.isEmpty)
       columnFamilies.map { family => ColumnFamily(family, get(row, family)) }.filter(!_.columns.isEmpty)
     else
@@ -106,14 +106,14 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     getColumns(slice)
   }
 
-  override def getBatch(rows: Seq[ByteArray], families: Seq[(String, Seq[ByteArray])]): Seq[Row] = {
+  override def getBatch(rows: Seq[Array[Byte]], families: Seq[(String, Seq[Array[Byte]])]): Seq[Row] = {
     rows.map { row =>
       val result = get(row, families)
       Row(row, result)
     }.filter(!_.families.isEmpty)
   }
 
-  override def getBatch(rows: Seq[ByteArray], family: String, columns: Seq[ByteArray]): Seq[Row] = {
+  override def getBatch(rows: Seq[Array[Byte]], family: String, columns: Seq[Array[Byte]]): Seq[Row] = {
     if (columns.isEmpty) {
       rows.map { row =>
         val result = get(row, family)
@@ -134,7 +134,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def intraRowScan(row: ByteArray, family: String, startColumn: ByteArray, stopColumn: ByteArray): IntraRowScanner = {
+  override def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): IntraRowScanner = {
     new IntraRowScanner {
       var iterator = get(row, family, startColumn, stopColumn, 100).iterator
 
@@ -162,7 +162,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def put(row: ByteArray, family: String, column: ByteArray, value: ByteArray, timestamp: Long): Unit = {
+  override def put(row: Array[Byte], family: String, column: Array[Byte], value: Array[Byte], timestamp: Long): Unit = {
     val key = ByteBuffer.wrap(row)
     val parent = new ColumnParent(family)
     val put = new CassandraColumn(ByteBuffer.wrap(column)).setValue(value)
@@ -170,7 +170,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     client.insert(key, parent, put, consistency)
   }
 
-  override def put(row: ByteArray, family: String, columns: Seq[Column]): Unit = {
+  override def put(row: Array[Byte], family: String, columns: Seq[Column]): Unit = {
     val key = ByteBuffer.wrap(row)
     val parent = family
     val updates = new java.util.HashMap[ByteBuffer, java.util.Map[String, java.util.List[Mutation]]]
@@ -190,7 +190,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     client.batch_mutate(updates, consistency)
   }
 
-  override def put(row: ByteArray, families: Seq[ColumnFamily]): Unit = {
+  override def put(row: Array[Byte], families: Seq[ColumnFamily]): Unit = {
     val key = ByteBuffer.wrap(row)
     val updates = new java.util.HashMap[ByteBuffer, java.util.Map[String, java.util.List[Mutation]]]
 
@@ -234,7 +234,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     client.batch_mutate(updates, consistency)
   }
 
-  override def delete(row: ByteArray, family: String, columns: Seq[ByteArray]): Unit = {
+  override def delete(row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Unit = {
     val key = ByteBuffer.wrap(row)
 
     if (columns.isEmpty) {
@@ -264,7 +264,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def delete(row: ByteArray, families: Seq[(String, Seq[ByteArray])]): Unit = {
+  override def delete(row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): Unit = {
     val key = ByteBuffer.wrap(row)
 
     if (families.isEmpty) {
@@ -279,7 +279,7 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def deleteBatch(rows: Seq[ByteArray]): Unit = {
+  override def deleteBatch(rows: Seq[Array[Byte]]): Unit = {
     rows.foreach { row =>
       delete(row)
     }
@@ -296,20 +296,20 @@ class CassandraTable(val db: Cassandra, val name: String, consistency: Consisten
     }
   }
 
-  override def getCounter(row: ByteArray, family: String, column: ByteArray): Long = {
+  override def getCounter(row: Array[Byte], family: String, column: Array[Byte]): Long = {
     val key = ByteBuffer.wrap(row)
     val path = new ColumnPath(family).setColumn(column)
     client.get(key, path, consistency).counter_column.value
   }
 
-  override def addCounter(row: ByteArray, family: String, column: ByteArray, value: Long): Unit = {
+  override def addCounter(row: Array[Byte], family: String, column: Array[Byte], value: Long): Unit = {
     val key = ByteBuffer.wrap(row)
     val parent = new ColumnParent(family)
     val counter = new CounterColumn(ByteBuffer.wrap(column), value)
     client.add(key, parent, counter, consistency)
   }
 
-  override def addCounter(row: ByteArray, families: Seq[(String, Seq[(ByteArray, Long)])]): Unit = {
+  override def addCounter(row: Array[Byte], families: Seq[(String, Seq[(Array[Byte], Long)])]): Unit = {
     families.foreach { case (family, columns) =>
       columns.foreach { case (column, value) =>
         addCounter(row, family, column, value)

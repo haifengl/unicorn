@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +19,15 @@ package unicorn.bigtable
 import java.util.Date
 
 /** Key of cell */
-case class CellKey(row: ByteArray, family: String, qualifier: ByteArray, timestamp: Long)
+case class CellKey(row: Array[Byte], family: String, qualifier: Array[Byte], timestamp: Long)
 /** Cell in wide columnar table */
-case class Cell(row: ByteArray, family: String, qualifier: ByteArray, value: ByteArray, timestamp: Long = 0)
+case class Cell(row: Array[Byte], family: String, qualifier: Array[Byte], value: Array[Byte], timestamp: Long = 0)
 /** A column of a column family */
-case class Column(qualifier: ByteArray, value: ByteArray, timestamp: Long = 0)
+case class Column(qualifier: Array[Byte], value: Array[Byte], timestamp: Long = 0)
 /** A column family */
 case class ColumnFamily(family: String, columns: Seq[Column])
 /** A row */
-case class Row(key: ByteArray, families: Seq[ColumnFamily])
+case class Row(key: Array[Byte], families: Seq[ColumnFamily])
 
 /** Abstraction of wide columnar data table.
   *
@@ -44,7 +44,7 @@ trait BigTable extends AutoCloseable {
   override def hashCode = toString.hashCode
 
   /** Get a column value. */
-  def apply(row: ByteArray, family: String, column: ByteArray): Option[ByteArray] = {
+  def apply(row: Array[Byte], family: String, column: Array[Byte]): Option[Array[Byte]] = {
     val seq = get(row, family, Seq(column))
     if (seq.isEmpty) None else Some(seq.head.value)
   }
@@ -55,28 +55,28 @@ trait BigTable extends AutoCloseable {
     * ```
     * Use the client machine UTC time for timestamp.
     */
-  def update(row: ByteArray, family: String, column: ByteArray, value: ByteArray): Unit = {
+  def update(row: Array[Byte], family: String, column: Array[Byte], value: Array[Byte]): Unit = {
     put(row, family, column, value, System.currentTimeMillis)
   }
 
   /** Get one or more columns of a column family. If columns is empty, get all columns in the column family. */
-  def get(row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column]
+  def get(row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Seq[Column]
 
   /** Get a column family. */
-  def get(row: ByteArray, family: String): Seq[Column] = {
+  def get(row: Array[Byte], family: String): Seq[Column] = {
     get(row, family, Seq.empty)
   }
 
   /** Get all or some columns in one or more column families.
     * If families is empty, get all column families.
     */
-  def get(row: ByteArray, families: Seq[(String, Seq[ByteArray])] = Seq.empty): Seq[ColumnFamily]
+  def get(row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])] = Seq.empty): Seq[ColumnFamily]
 
   /** Get multiple rows for given column family.
     * The implementation may or may not optimize the batch operations.
     * In particular, Accumulo does optimize it.
     */
-  def getBatch(rows: Seq[ByteArray], family: String): Seq[Row] = {
+  def getBatch(rows: Seq[Array[Byte]], family: String): Seq[Row] = {
     getBatch(rows, family, Seq.empty)
   }
 
@@ -84,22 +84,22 @@ trait BigTable extends AutoCloseable {
     * The implementation may or may not optimize the batch operations.
     * In particular, Accumulo does optimize it.
     */
-  def getBatch(rows: Seq[ByteArray], family: String, columns: Seq[ByteArray]): Seq[Row]
+  def getBatch(rows: Seq[Array[Byte]], family: String, columns: Seq[Array[Byte]]): Seq[Row]
 
   /** Get multiple rows for given column families. If families is empty, get all column families.
     * The implementation may or may not optimize the batch operations.
     * In particular, Accumulo does optimize it.
     */
-  def getBatch(rows: Seq[ByteArray], families: Seq[(String, Seq[ByteArray])] = Seq.empty): Seq[Row]
+  def getBatch(rows: Seq[Array[Byte]], families: Seq[(String, Seq[Array[Byte]])] = Seq.empty): Seq[Row]
 
   /** Upsert a value. */
-  def put(row: ByteArray, family: String, column: ByteArray, value: ByteArray, timestamp: Long): Unit
+  def put(row: Array[Byte], family: String, column: Array[Byte], value: Array[Byte], timestamp: Long): Unit
 
   /** Upsert values. */
-  def put(row: ByteArray, family: String, columns: Seq[Column]): Unit
+  def put(row: Array[Byte], family: String, columns: Seq[Column]): Unit
 
   /** Upsert values. */
-  def put(row: ByteArray, families: Seq[ColumnFamily]): Unit
+  def put(row: Array[Byte], families: Seq[ColumnFamily]): Unit
 
   /** Update the values of one or more rows.
     * The implementation may or may not optimize the batch operations.
@@ -108,55 +108,55 @@ trait BigTable extends AutoCloseable {
   def putBatch(rows: Row*): Unit
 
   /** Delete the column family of a row. */
-  def delete(row: ByteArray, family: String): Unit = {
+  def delete(row: Array[Byte], family: String): Unit = {
     delete(row, family, Seq.empty)
   }
 
   /** Delete the column of a row. */
-  def delete(row: ByteArray, family: String, column: ByteArray): Unit = {
+  def delete(row: Array[Byte], family: String, column: Array[Byte]): Unit = {
     delete(row, family, Seq(column))
   }
 
   /** Delete the columns of a row. If columns is empty, delete all columns in the family. */
-  def delete(row: ByteArray, family: String, columns: Seq[ByteArray]): Unit
+  def delete(row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Unit
 
   /** Delete the columns of a row. If families is empty, delete the whole row. */
-  def delete(row: ByteArray, families: Seq[(String, Seq[ByteArray])] = Seq.empty): Unit
+  def delete(row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])] = Seq.empty): Unit
 
   /** Delete multiple rows.
     * The implementation may or may not optimize the batch operations.
     * In particular, Accumulo does optimize it.
     */
-  def deleteBatch(rows: Seq[ByteArray]): Unit
+  def deleteBatch(rows: Seq[Array[Byte]]): Unit
 }
 
 /** Get a row at a given time point. */
 trait TimeTravel {
   /** Get a column family. */
-  def getAsOf(asOfDate: Date, row: ByteArray, family: String): Seq[Column] = {
+  def getAsOf(asOfDate: Date, row: Array[Byte], family: String): Seq[Column] = {
     getAsOfDate(asOfDate, row, family, Seq.empty)
   }
 
   /** Get one or more columns of a column family. If columns is empty, get all columns in the column family. */
-  def getAsOfDate(asOfDate: Date, row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column]
+  def getAsOfDate(asOfDate: Date, row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Seq[Column]
 
   /** Get all columns in one or more column families. If families is empty, get all column families. */
-  def getAsOfDate(asOfDate: Date, row: ByteArray, families: Seq[(String, Seq[ByteArray])] = Seq.empty): Seq[ColumnFamily]
+  def getAsOfDate(asOfDate: Date, row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])] = Seq.empty): Seq[ColumnFamily]
 
 }
 
 /** Check and put. Put a row only if the given column doesn't exist. */
 trait CheckAndPut {
   /** Insert values. Returns true if the new put was executed, false otherwise. */
-  def checkAndPut(row: ByteArray, checkFamily: String, checkColumn: ByteArray, family: String, column: Column): Boolean = {
+  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], family: String, column: Column): Boolean = {
     checkAndPut(row, checkFamily, checkColumn, family, Seq(column))
   }
 
   /** Insert values. Returns true if the new put was executed, false otherwise. */
-  def checkAndPut(row: ByteArray, checkFamily: String, checkColumn: ByteArray, family: String, columns: Seq[Column]): Boolean
+  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], family: String, columns: Seq[Column]): Boolean
 
   /** Insert values. Returns true if the new put was executed, false otherwise. */
-  def checkAndPut(row: ByteArray, checkFamily: String, checkColumn: ByteArray, families: Seq[ColumnFamily]): Boolean
+  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], families: Seq[ColumnFamily]): Boolean
 }
 
 /** Row scan iterator */
@@ -167,9 +167,9 @@ trait RowScanner extends Iterator[Row] {
 /** If BigTable supports row scan. */
 trait RowScan {
   /** Start row in a table. */
-  val TableStartRow: ByteArray
+  val TableStartRow: Array[Byte]
   /** End row in a table. */
-  val TableEndRow: ByteArray
+  val TableEndRow: Array[Byte]
 
   /** When scanning for a prefix the scan should stop immediately after the the last row that
     * has the specified prefix. This method calculates the closest next row key immediately following
@@ -184,7 +184,7 @@ trait RowScan {
     * @return the closest next row key immediately following the given prefix.
     */
   def prefixEndRow(prefix: Array[Byte]): Array[Byte] = {
-    val ff:  Byte = 0xFF.toByte
+    val ff : Byte = 0xFF.toByte
     val one: Byte = 1
 
     // Essentially we are treating it like an 'unsigned very very long' and doing +1 manually.
@@ -212,7 +212,7 @@ trait RowScan {
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: ByteArray, stopRow: ByteArray, family: String): RowScanner = {
+  def scan(startRow: Array[Byte], stopRow: Array[Byte], family: String): RowScanner = {
     scan(startRow, stopRow, family, Seq.empty)
   }
 
@@ -220,7 +220,7 @@ trait RowScan {
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: ByteArray, stopRow: ByteArray, family: String, columns: Seq[ByteArray]): RowScanner = {
+  def scan(startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
     scan(startRow, startRow, Seq((family, columns)))
   }
 
@@ -228,7 +228,7 @@ trait RowScan {
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: ByteArray, stopRow: ByteArray): RowScanner = {
+  def scan(startRow: Array[Byte], stopRow: Array[Byte]): RowScanner = {
     scan(startRow, stopRow, Seq.empty)
   }
 
@@ -236,7 +236,7 @@ trait RowScan {
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: ByteArray, stopRow: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner
+  def scan(startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner
 
   /** Scan the whole table. */
   def scan(family: String): RowScanner = {
@@ -244,12 +244,12 @@ trait RowScan {
   }
 
   /** Scan the whole table. */
-  def scan(family: String, columns: Seq[ByteArray]): RowScanner = {
+  def scan(family: String, columns: Seq[Array[Byte]]): RowScanner = {
     scan(TableStartRow, TableEndRow, family, columns)
   }
 
   /** Scan the whole table. */
-  def scan(families: Seq[(String, Seq[ByteArray])]): RowScanner = {
+  def scan(families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
     scan(TableStartRow, TableEndRow, families)
   }
 
@@ -259,22 +259,22 @@ trait RowScan {
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: ByteArray, family: String): RowScanner = {
+  def scanPrefix(prefix: Array[Byte], family: String): RowScanner = {
     scan(prefix, prefixEndRow(prefix), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: ByteArray, family: String, columns: Seq[ByteArray]): RowScanner = {
+  def scanPrefix(prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
     scan(prefix, prefixEndRow(prefix), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner = {
+  def scanPrefix(prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
     scan(prefix, prefixEndRow(prefix), families)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: ByteArray): RowScanner = {
+  def scanPrefix(prefix: Array[Byte]): RowScanner = {
     scan(prefix, prefixEndRow(prefix))
   }
 }
@@ -290,7 +290,7 @@ trait IntraRowScan {
     * @param startColumn column to start scanner at or after (inclusive)
     * @param stopColumn column to stop scanner before or at (inclusive)
     */
-  def intraRowScan(row: ByteArray, family: String, startColumn: ByteArray, stopColumn: ByteArray): IntraRowScanner
+  def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): IntraRowScanner
 }
 
 object ScanFilter {
@@ -304,7 +304,7 @@ object ScanFilter {
   case class And(list: Seq[Expression]) extends Expression
   case class Or (list: Seq[Expression]) extends Expression
   /** If the filterIfMissing flag is true, the row will not be emitted if the specified column to check is not found in the row. */
-  case class BasicExpression(op: CompareOperator, family: String, column: ByteArray, value: ByteArray, filterIfMissing: Boolean = true) extends Expression
+  case class BasicExpression(op: CompareOperator, family: String, column: Array[Byte], value: Array[Byte], filterIfMissing: Boolean = true) extends Expression
 }
 
 /** If BigTable supports filter. */
@@ -314,7 +314,7 @@ trait FilterScan extends RowScan {
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: ByteArray, stopRow: ByteArray, family: String): RowScanner = {
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String): RowScanner = {
     scan(filter, startRow, stopRow, family, Seq.empty)
   }
 
@@ -323,14 +323,14 @@ trait FilterScan extends RowScan {
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: ByteArray, stopRow: ByteArray, family: String, columns: Seq[ByteArray]): RowScanner
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner
 
   /** Scan the range for all columns in one or more column families. If families is empty, get all column families.
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: ByteArray, stopRow: ByteArray): RowScanner = {
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte]): RowScanner = {
     scan(filter, startRow, stopRow, Seq.empty)
   }
 
@@ -339,35 +339,35 @@ trait FilterScan extends RowScan {
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: ByteArray, stopRow: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner
 
   /** Get a column family.
     * @param filter filter expression
     */
-  def get(filter: ScanFilter.Expression, row: ByteArray, family: String): Seq[Column] = {
+  def get(filter: ScanFilter.Expression, row: Array[Byte], family: String): Seq[Column] = {
     get(filter, row, family, Seq.empty)
   }
 
   /** Get one or more columns. If columns is empty, get all columns in the column family.
     * @param filter filter expression
     */
-  def get(filter: ScanFilter.Expression, row: ByteArray, family: String, columns: Seq[ByteArray]): Seq[Column]
+  def get(filter: ScanFilter.Expression, row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Seq[Column]
 
   /** Get the row.
     * @param filter filter expression
     */
-  def get(filter: ScanFilter.Expression, row: ByteArray): Seq[ColumnFamily] = {
+  def get(filter: ScanFilter.Expression, row: Array[Byte]): Seq[ColumnFamily] = {
     get(filter, row, Seq.empty)
   }
 
   /** Get the range for all columns in one or more column families. If families is empty, get all column families.
     * @param filter filter expression
     */
-  def get(filter: ScanFilter.Expression, row: ByteArray, families: Seq[(String, Seq[ByteArray])]): Seq[ColumnFamily]
+  def get(filter: ScanFilter.Expression, row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): Seq[ColumnFamily]
 
   /** Get the column keys only.
     */
-  def getKeyOnly(row: ByteArray, families: String*): Seq[ColumnFamily]
+  def getKeyOnly(row: Array[Byte], families: String*): Seq[ColumnFamily]
 
   /** Scan the whole table. */
   def scan(filter: ScanFilter.Expression, family: String): RowScanner = {
@@ -375,7 +375,7 @@ trait FilterScan extends RowScan {
   }
 
   /** Scan the whole table. */
-  def scan(filter: ScanFilter.Expression, family: String, columns: Seq[ByteArray]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, family: String, columns: Seq[Array[Byte]]): RowScanner = {
     scan(filter, TableStartRow, TableEndRow, family, columns)
   }
 
@@ -385,27 +385,27 @@ trait FilterScan extends RowScan {
   }
 
   /** Scan the whole table. */
-  def scan(filter: ScanFilter.Expression, families: Seq[(String, Seq[ByteArray])]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
     scan(filter, TableStartRow, TableEndRow, families)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: ByteArray, family: String): RowScanner = {
+  def scan(filter: ScanFilter.Expression, prefix: Array[Byte], family: String): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: ByteArray, family: String, columns: Seq[ByteArray]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: ByteArray): RowScanner = {
+  def scan(filter: ScanFilter.Expression, prefix: Array[Byte]): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix))
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: ByteArray, families: Seq[(String, Seq[ByteArray])]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix), families)
   }
 }
@@ -431,32 +431,32 @@ trait CellLevelSecurity {
 /** If BigTable supports rollback to previous version of a cell. */
 trait Rollback {
   /** Rollback to the previous version for the given column of a row. */
-  def rollback(row: ByteArray, family: String, column: ByteArray): Unit = {
+  def rollback(row: Array[Byte], family: String, column: Array[Byte]): Unit = {
     rollback(row, family, Seq(column))
   }
 
   /** Rollback to the previous version for the given columns of a row.
     * The parameter columns cannot be empty. */
-  def rollback(row: ByteArray, family: String, columns: Seq[ByteArray]): Unit
+  def rollback(row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Unit
 
   /** Rollback the columns of a row. The parameter families can not be empty. */
-  def rollback(row: ByteArray, families: Seq[(String, Seq[ByteArray])]): Unit
+  def rollback(row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): Unit
 }
 
 /** If BigTable supports appending to a cell. */
 trait Appendable {
   /** Append the value of a column. */
-  def append(row: ByteArray, family: String, column: ByteArray, value: ByteArray): Unit
+  def append(row: Array[Byte], family: String, column: Array[Byte], value: Array[Byte]): Unit
 }
 
 /** If BigTable supports counter data type. */
 trait Counter {
   /** Get the value of a counter column */
-  def getCounter(row: ByteArray, family: String, column: ByteArray): Long
+  def getCounter(row: Array[Byte], family: String, column: Array[Byte]): Long
 
   /** Increase a counter with given value (may be negative for decrease). */
-  def addCounter(row: ByteArray, family: String, column: ByteArray, value: Long): Unit
+  def addCounter(row: Array[Byte], family: String, column: Array[Byte], value: Long): Unit
 
   /** Increase a counter with given value (may be negative for decrease). */
-  def addCounter(row: ByteArray, families: Seq[(String, Seq[(ByteArray, Long)])]): Unit
+  def addCounter(row: Array[Byte], families: Seq[(String, Seq[(Array[Byte], Long)])]): Unit
 }

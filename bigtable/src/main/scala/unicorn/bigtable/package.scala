@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,8 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 
 /**
- * Utility functions.
- *
- * @author Haifeng Li
- */
+  * @author Haifeng Li
+  */
 package object bigtable {
 
   val utf8 = Charset.forName("UTF-8")
@@ -31,9 +29,7 @@ package object bigtable {
   implicit def boxByteArray(x: Array[Byte]) = new ByteArray(x)
   implicit def unboxByteArray(x: ByteArray) = x.bytes
   implicit def string2Bytes(x: String) = x.getBytes(utf8)
-  implicit def string2ByteArray(x: String) = new ByteArray(x.getBytes(utf8))
-  implicit def bytesSeq2ByteArray(x: Seq[Array[Byte]]) = x.map { bytes => new ByteArray(bytes) }
-  implicit def stringSeq2ByteArray(x: Seq[String]) = x.map { s => new ByteArray(s.getBytes(utf8)) }
+  implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(utf8))
 
   /** Helper function convert ByteBuffer to Array[Byte]. */
   implicit def byteBuffer2ArrayByte(buffer: ByteBuffer): Array[Byte] = {
@@ -42,9 +38,6 @@ package object bigtable {
     buffer.get(bytes)
     bytes
   }
-
-  /** Helper function convert ByteBuffer to ByteArray. */
-  implicit def byteBuffer2ByteArray(buffer: ByteBuffer): ByteArray = ByteArray(byteBuffer2ArrayByte(buffer))
 
   /** Byte array ordering */
   def compareByteArray(x: Array[Byte], y: Array[Byte]): Int = {
