@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,10 @@
  *******************************************************************************/
 
 import java.util.{Date, UUID}
-import unicorn.util._, unicorn.oid._, unicorn.json._
+import java.time.{LocalDate, LocalTime, LocalDateTime}
+import java.sql.Timestamp
+import unicorn.json._
 import unicorn.bigtable.hbase.HBase
-import unicorn.bigtable.cassandra.Cassandra
-import unicorn.bigtable.accumulo.Accumulo
-import unicorn.bigtable.rocksdb.RocksDB
 import unicorn.unibase._
 import unicorn.unibase.graph._
 import unicorn.narwhal._
