@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,32 +19,82 @@ package unicorn.unibase
 import unicorn.json._
 import unicorn.bigtable._
 
-/** Tables are the data containers of documents. A document is simply a JSON
-  * object with a unique id (the _id field), which is similar to the primary key
-  * in relational database. The key can be arbitrary JSON
-  * value including Object and Array. However, they are some limitations in practice:
-  *
-  *  - The size limitation. The id of document serves as the row key in the underlying
-  *    BigTable implementation. Most BigTable implementations have the upper limit of
-  *    row key (often as 64KB).
-  *  - For compound primary key (i.e. multiple fields), it is better use JsArray instead
-  *    of JsObject as the container because it maintains the order of fields, which is
-  *    important in the scan operations. When serializing an Object, the order of fields
-  *    may be undefined (because of hashing) or simply ascending in field name.
-  *  - The fields of compound primary key should be fixed size. In database with schema
-  *    (e.g. relational database). The variable length field is padded to the maximum size.
-  *    However, Unibase is schemaless database and thus we are lack of this type information.
-  *    It is the developer's responsibility to make sure the proper use of primary key.
-  *    Otherwise, the index and scan operations won't work correctly.
+/** Similar to a `Drawer`, a `Table` is a collection of documents but can get
+  * and set only some fields of documents besides the whole document. However,
+  * a table may take more space on the disk.
   *
   * @author Haifeng Li
   */
-class Table(override val table: BigTable with RowScan, override val meta: JsObject) extends Drawer(table, meta) {
+class Table(val table: BigTable, val rowkey: RowKey) extends UpdateOps {
+  /** Document serializer. */
+  val serializer = new JsonSerializer()
+
+  /** The table name. */
+  val name = table.name
+
+  /** Gets a document.
+    *
+    * @param key document key.
+    * @param fields the fields to get. Get the whole document if no field is given.
+    * @return an option of document. None if it doesn't exist.
+    */
+  def apply(key: Key, fields: String*): Option[JsValue] = {
+    val columns = table.get(rowkey(key), DocumentColumnFamily, fields)
+
+    if (columns.isEmpty) None
+    else {
+      val doc = JsObject()
+      columns.foreach { case Column(qualifier, value, _) =>
+        doc(qualifier) = serializer.deserialize(value)
+      }
+      Some(doc)
+    }
+  }
+
+  /** Upserts a document. If a document with same key exists, it will overwritten.
+    * The _id field of document will be used as the primary key in the table.
+    * If the document doesn't have _id field, a random UUID will be generated as _id.
+    *
+    * @param doc the document.
+    * @return the document id.
+    */
+  def upsert(doc: JsObject): Unit = {
+    table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
+  }
+
+  /** Updates a document. The supported update operators include
+    *
+    *  - \$set: Sets the value of a field in a document.
+    *  - \$unset: Removes the specified field from a document.
+    *
+    * @param doc the document update operators.
+    */
+  def update(key: Key, doc: JsObject): Unit = {
+    val $set = doc("$set")
+    require($set == JsUndefined || $set.isInstanceOf[JsObject], "$set is not an object: " + $set)
+
+    val $unset = doc("$unset")
+    require($unset == JsUndefined || $unset.isInstanceOf[JsObject], "$unset is not an object: " + $unset)
+
+    if ($set.isInstanceOf[JsObject]) set(key, $set.asInstanceOf[JsObject])
+
+    if ($unset.isInstanceOf[JsObject]) unset(key, $unset.asInstanceOf[JsObject])
+  }
+
+  /** Removes a document.
+    *
+    * @param key the document id.
+    */
+  def delete(key: Key): Unit = {
+    table.delete(rowkey(key))
+  }
+/*
   def scan: DocumentScanner = {
     new DocumentScanner(table.scanAll())
   }
+  */
 }
-
+/*
 /** Row scan iterator */
 class DocumentScanner(rows: RowScanner) extends Iterator[JsObject] {
   val serializer = new DocumentSerializer()
@@ -57,3 +107,4 @@ class DocumentScanner(rows: RowScanner) extends Iterator[JsObject] {
     serializer.deserialize(rows.next.families).get
   }
 }
+*/

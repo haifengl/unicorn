@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,8 @@
 
 package unicorn.unibase
 
-import unicorn.bigtable.{Column, BigTable, Database}
-import unicorn.unibase.graph.Graph
+import unicorn.bigtable.{BigTable, Database}
 import unicorn.json._
-import unicorn.util._
 
 /** A Cabinet is a database of documents. A collection of documents are called Drawer.
   * In addition to documents, Cabinet also supports the (property) graph model.
@@ -27,22 +25,46 @@ import unicorn.util._
   * @author Haifeng Li
   */
 class Cabinet[+T <: BigTable](db: Database[T]) {
-  import unicorn.unibase.graph.GraphVertexKeyTableSuffix
-  import unicorn.unibase.graph.GraphVertexColumnFamily
-  import unicorn.unibase.graph.GraphInEdgeColumnFamily
-  import unicorn.unibase.graph.GraphOutEdgeColumnFamily
 
-  private[unicorn] def graphVertexKeyTable(name: String): String = {
-    name + GraphVertexKeyTableSuffix
+  private lazy val metaTable = {
+    if (!db.tableExists(MetaTableName)) {
+      val metaTable = db.createTable(MetaTableName, DocumentColumnFamily)
+      metaTable.close
+    }
+
+    new Drawer(db(MetaTableName), RowKey("table"))
   }
 
   /** Returns a document drawer.
     * @param name The name of table.
     */
-  def apply(name: String): Drawer = {
-    new Drawer(db(name), TableMeta(db, name))
+  def drawer(name: String): Drawer = {
+    val meta = metaTable(name)
+    if (meta.isEmpty)
+      throw new IllegalArgumentException(s"$name metadata doesn't exist")
+
+    if (meta.get.`type`.toString != TABLE_TYPE_DRAWER)
+      throw new IllegalArgumentException(s"$name is not a drawer")
+
+    val rowkey = meta.map(TableMeta.rowkey(_)).get
+    new Drawer(db(name), rowkey)
   }
 
+  /** Returns a document table.
+    * @param name The name of table.
+    */
+  def table(name: String): Table = {
+    val meta = metaTable(name)
+    if (meta.isEmpty)
+      throw new IllegalArgumentException(s"$name metadata doesn't exist")
+
+    if (meta.get.`type`.toString != TABLE_TYPE_TABLE)
+      throw new IllegalArgumentException(s"$name is not a table")
+
+    val rowkey = meta.map(TableMeta.rowkey(_)).get
+    new Table(db(name), rowkey)
+  }
+/*
   /** Returns a read only graph, which doesn't need an ID
     * generator. This is sufficient for graph traversal and analytics.
     *
@@ -51,39 +73,39 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
   def graph(name: String): Graph = {
     new Graph(db(name), db(graphVertexKeyTable(name)))
   }
-
-  /** Creates a document collection.
+*/
+  /** Creates a document drawer.
     * @param name the name of table.
-    * @param families the column family that documents resident.
-    * @param locality a map of document fields to column families for storing of sets of fields in column families
-    *                 separately to allow clients to scan over fields that are frequently used together efficient
-    *                 and to avoid scanning over column families that are not requested.
+    * @param key the document field(s) used as row key in BigTable.
+    *            If not specified, the "_id" field is used as the
+    *            document key as in MongoDB.
     */
   def createDrawer(name: String,
-                   families: Seq[String] = Seq(DocumentColumnFamily),
-                   locality: Map[String, String] = Map().withDefaultValue(DocumentColumnFamily),
-                   appendOnly: Boolean = false): Unit = {
-    val table = db.createTable(name, families: _*)
+                   key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
+    val table = db.createTable(name, DocumentColumnFamily)
     // RocksDB will hold the lock if we don't close it
     table.close
 
-    // If the meta data table doesn't exist, create it.
-    if (!db.tableExists(MetaTableName)) {
-      val metaTable = db.createTable(MetaTableName, MetaTableColumnFamily)
-      metaTable.close
-    }
-
-    // meta data table
-    val metaTable = db(MetaTableName)
-    val serializer = new ColumnarJsonSerializer
-    val meta = TableMeta(families, locality, appendOnly)
-    val columns = serializer.serialize(meta).map {
-      case (path, value) => Column(path.getBytes(utf8), value)
-    }.toSeq
-    metaTable.put(name, MetaTableColumnFamily, columns: _*)
-    metaTable.close
+    val meta = TableMeta(name, TABLE_TYPE_DRAWER, key)
+    metaTable.upsert(meta)
   }
 
+  /** Creates a document table.
+    * @param name the name of table.
+    * @param key the document field(s) used as row key in BigTable.
+    *            If not specified, the "_id" field is used as the
+    *            document key as in MongoDB.
+    */
+  def createTable(name: String,
+                   key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
+    val table = db.createTable(name, DocumentColumnFamily)
+    // RocksDB will hold the lock if we don't close it
+    table.close
+
+    val meta = TableMeta(name, TABLE_TYPE_TABLE, key)
+    metaTable.upsert(meta)
+  }
+/*
   /** Creates a graph table.
     * @param name the name of graph table.
     */
@@ -100,43 +122,37 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
     val keyTable = db.createTable(vertexKeyTable, GraphVertexColumnFamily)
     keyTable.close
   }
-
-  /** Drops a document table. All column families in the table will be dropped. */
-  def dropDrawer(name: String): Unit = {
+*/
+  /** Drops a table. All column families in the table will be dropped. */
+  def drop(name: String): Unit = {
     db.dropTable(name)
-    db(MetaTableName).delete(name)
-  }
-
-  /** Drops a graph. All tables related to the graph will be dropped. */
-  def dropGraph(name: String): Unit = {
-    db.dropTable(name)
-    db.dropTable(graphVertexKeyTable(name))
+    metaTable.delete(name)
   }
 
   /** Truncates a BigTable.
     * @param name the name of table.
     */
-  def truncateTable(name: String): Unit = {
+  def truncate(name: String): Unit = {
     db.truncateTable(name)
   }
 
   /** Tests if a BigTable exists.
     * @param name the name of table.
     */
-  def tableExists(name: String): Boolean = {
+  def exists(name: String): Boolean = {
     db.tableExists(name)
   }
 
   /** Major compacts a BigTable. Asynchronous operation.
     * @param name the name of table.
     */
-  def compactTable(name: String): Unit = {
+  def compact(name: String): Unit = {
     db.compactTable(name)
   }
 
   /** Returns the list of BigTables. */
   def tables: Set[String] = {
-    db.tables.filter(!_.endsWith(GraphVertexKeyTableSuffix))
+    db.tables
   }
 }
 
@@ -149,33 +165,57 @@ object Cabinet {
 private[unicorn] object TableMeta {
   /** Creates JsObject of table meta data.
     *
-    * @param families Column families of document store. There may be other column families in the underlying table
-    *                 for meta data or index.
-    * @param locality Locality map of document fields to column families.
-    * @param appendOnly True if the table is append only.
+    * @param table The name of table.
+    * @param `type` The type of table.
+    * @param key The document field(s) used as row key in BigTable.
     * @return JsObject of meta data.
     */
-  def apply(families: Seq[String], locality: Map[String, String], appendOnly: Boolean): JsObject = {
-    JsObject(
-      "families" -> families.toJsArray,
-      "locality" -> locality.toJsObject,
-      DefaultLocalityField -> locality(""), // hacking the default value of a map
-      "appendOnly" -> appendOnly
-    )
+  def apply(table: String, `type`: String, key: RowKey): JsObject = {
+    val rowkey = key match {
+      case PrimitiveRowKey(key, order) => JsObject(key -> JsString(order.toString))
+      case CompoundRowKey(keys, capacity) =>
+        JsObject("compound_key" ->
+          JsArray(keys.map { case PrimitiveRowKey(key, order) =>
+            JsObject(key -> JsString(order.toString))
+          }), "capacity" -> capacity
+        )
+    }
+
+    JsObject("table" -> table, "type" -> `type`, "key" -> rowkey)
   }
 
-  /** Retrieves the meta data of a table.
-    * @param db the host database.
-    * @param name table name.
-    * @return JsObject of table meta data.
+  /** Creates the RowKey from the meta data.
+    * @param meta The meta data of table.
     */
-  def apply(db: Database[BigTable], name: String): JsObject = {
-    val metaTable = db(MetaTableName)
-    val serializer = new ColumnarJsonSerializer
-    val meta = metaTable.get(name, MetaTableColumnFamily).map {
-      case Column(qualifier, value, _) => (new String(qualifier, utf8), value.bytes)
-    }.toMap
-    metaTable.close
-    serializer.deserialize(meta).asInstanceOf[JsObject]
+  def rowkey(meta: JsValue): RowKey = {
+    val key = meta.key
+    key.compound_key match {
+      case JsUndefined => primitive(key)
+
+      case JsArray(keys) =>
+        val capacity: Int = key.capacity
+        CompoundRowKey(keys.map { key => primitive(key) }, capacity)
+
+      case _ => throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
+    }
+  }
+
+  /** Creates the primitive key. */
+  private def primitive(key: JsValue): PrimitiveRowKey = {
+    if (!key.isInstanceOf[JsObject])
+      throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
+
+    val fields = key.asInstanceOf[JsObject].fields.toSeq
+    if (fields.size != 1)
+      throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
+
+    val field = fields(0)
+    val order = field._2.toString.toLowerCase match {
+      case "ascending" => ASCENDING
+      case "descending" => DESCENDING
+      case order => throw new IllegalArgumentException(s"Unknown sort order: $order")
+    }
+
+    PrimitiveRowKey(field._1, order)
   }
 }

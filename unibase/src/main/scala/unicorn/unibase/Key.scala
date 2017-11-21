@@ -20,11 +20,18 @@ import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
-import unicorn.oid.BsonObjectId
+import unicorn.json.ObjectId
 
-/** Document Key. Primitive key types are: Int, Long, Double, BigDecimal,
+/** Document key. Primitive key types are: Int, Long, Double, BigDecimal,
   * LocalDate, LocalDateTime, Timestamp, BSON Object ID, UUID, and Strings.
   * Composite key may have an arbitrary number of fields of any primitive type.
+  *
+  * Keep document keys as short as is reasonable such that they can still
+  * be useful for required data access.
+  *
+  * Document keys cannot be changed. The only way they can be "changed"
+  * in a table is that the document is deleted and then re-inserted.
+  * It pays to get the keys right the first time.
   *
   * @author Haifeng Li
   */
@@ -35,12 +42,12 @@ sealed trait PrimitiveKey extends Key
 case class IntKey(key: Int) extends PrimitiveKey
 case class LongKey(key: Long) extends PrimitiveKey
 case class DoubleKey(key: Double) extends PrimitiveKey
-case class BigDecimalKey(key: BigDecimal) extends PrimitiveKey
+case class DecimalKey(key: BigDecimal) extends PrimitiveKey
 case class StringKey(key: String) extends PrimitiveKey
-case class LocalDateKey(key: LocalDate) extends PrimitiveKey
-case class LocalDateTimeKey(key: LocalDateTime) extends PrimitiveKey
+case class DateKey(key: LocalDate) extends PrimitiveKey
+case class DateTimeKey(key: LocalDateTime) extends PrimitiveKey
 case class TimestampKey(key: Timestamp) extends PrimitiveKey
-case class BsonObjectIdKey(key: BsonObjectId) extends PrimitiveKey
+case class ObjectIdKey(key: ObjectId) extends PrimitiveKey
 case class UUIDKey(key: UUID) extends PrimitiveKey
 
 case class CompoundKey(keys: Seq[PrimitiveKey]) extends Key
