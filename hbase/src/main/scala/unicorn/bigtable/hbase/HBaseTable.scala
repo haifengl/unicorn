@@ -132,34 +132,34 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
     HBaseTable.getRow(table.get(get)).families
   }
 
-  override def scan(startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
-    val scan = newScan(startRow, stopRow)
+  override def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+    val scan = newScan(startRow, endRow)
     families.foreach { case (family, columns) => scanColumns(scan, family, columns) }
     new HBaseRowScanner(table.getScanner(scan))
   }
 
-  override def scan(startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
-    val scan = newScan(startRow, stopRow)
+  override def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+    val scan = newScan(startRow, endRow)
     scanColumns(scan, family, columns)
     new HBaseRowScanner(table.getScanner(scan))
   }
 
-  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
-    val scan = newScan(startRow, stopRow)
+  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+    val scan = newScan(startRow, endRow)
     scan.setFilter(hbaseFilter(filter))
     families.foreach { case (family, columns) => scanColumns(scan, family, columns) }
     new HBaseRowScanner(table.getScanner(scan))
   }
 
-  private[unicorn] def hbaseScan(startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])], filter: Option[ScanFilter.Expression] = None): Scan = {
-    val scan = newScan(startRow, stopRow)
+  private[unicorn] def hbaseScan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])], filter: Option[ScanFilter.Expression] = None): Scan = {
+    val scan = newScan(startRow, endRow)
     if (filter.isDefined) scan.setFilter(hbaseFilter(filter.get))
     families.foreach { case (family, columns) => scanColumns(scan, family, columns) }
     scan
   }
 
-  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
-    val scan = newScan(startRow, stopRow)
+  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+    val scan = newScan(startRow, endRow)
     scan.setFilter(hbaseFilter(filter))
     scanColumns(scan, family, columns)
     new HBaseRowScanner(table.getScanner(scan))
@@ -377,8 +377,8 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
     *                    caching blocks if the block cache is disabled for that family or entirely).
     *                    If false, default settings are overridden and blocks will not be cached
     */
-  private def newScan(startRow: Array[Byte], stopRow: Array[Byte], caching: Int = 20, cacheBlocks: Boolean = true): Scan = {
-    val scan = new Scan(startRow, stopRow)
+  private def newScan(startRow: Array[Byte], endRow: Array[Byte], caching: Int = 20, cacheBlocks: Boolean = true): Scan = {
+    val scan = new Scan(startRow, endRow)
     scan.setCacheBlocks(cacheBlocks)
     scan.setCaching(caching)
     if (authorizations.isDefined) scan.setAuthorizations(authorizations.get)
