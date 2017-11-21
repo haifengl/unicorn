@@ -194,7 +194,7 @@ trait RowScan {
       case  x => prefix.length - x - 1
     }
 
-    // We got an 0xFFFF... (only FFs) stopRow value which is
+    // We got an 0xFFFF... (only FFs) endRow value which is
     // the last possible prefix before the end of the table.
     // So set it to stop at the 'end of the table'
     if (offset == 0) {
@@ -202,41 +202,41 @@ trait RowScan {
     }
 
     // Copy the right length of the original
-    val stopRow = java.util.Arrays.copyOfRange(prefix, 0, offset)
+    val endRow = java.util.Arrays.copyOfRange(prefix, 0, offset)
     // And increment the last one
-    stopRow(stopRow.length - 1) = (stopRow(stopRow.length - 1) + one).toByte
-    stopRow
+    endRow(endRow.length - 1) = (endRow(endRow.length - 1) + one).toByte
+    endRow
   }
 
   /** Scan a column family.
     * @param startRow row to start scanner at or after (inclusive)
-    * @param stopRow row to stop scanner before (exclusive)
+    * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], stopRow: Array[Byte], family: String): RowScanner = {
-    scan(startRow, stopRow, family, Seq.empty)
+  def scan(startRow: Array[Byte], endRow: Array[Byte], family: String): RowScanner = {
+    scan(startRow, endRow, family, Seq.empty)
   }
 
   /** Scan one or more columns. If columns is empty, get all columns in the column family.
     * @param startRow row to start scanner at or after (inclusive)
-    * @param stopRow row to stop scanner before (exclusive)
+    * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
-    scan(startRow, startRow, Seq((family, columns)))
+  def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+    scan(startRow, endRow, Seq((family, columns)))
   }
 
   /** Scan the range for all column families.
     * @param startRow row to start scanner at or after (inclusive)
-    * @param stopRow row to stop scanner before (exclusive)
+    * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], stopRow: Array[Byte]): RowScanner = {
-    scan(startRow, stopRow, Seq.empty)
+  def scan(startRow: Array[Byte], endRow: Array[Byte]): RowScanner = {
+    scan(startRow, endRow, Seq.empty)
   }
 
   /** Scan the range for all columns in one or more column families. If families is empty, get all column families.
     * @param startRow row to start scanner at or after (inclusive)
-    * @param stopRow row to stop scanner before (exclusive)
+    * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner
+  def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner
 
   /** Scan the whole table. */
   def scan(family: String): RowScanner = {
