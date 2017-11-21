@@ -160,7 +160,7 @@ trait CheckAndPut {
 }
 
 /** Row scan iterator */
-trait RowScanner extends Iterator[Row] {
+trait RowScanner extends Iterator[Row] with AutoCloseable {
   def close: Unit
 }
 
@@ -280,7 +280,7 @@ trait RowScan {
 }
 
 /** Intra-row scan iterator */
-trait IntraRowScanner extends Iterator[Column] {
+trait IntraRowScanner extends Iterator[Column] with AutoCloseable {
   def close: Unit
 }
 
