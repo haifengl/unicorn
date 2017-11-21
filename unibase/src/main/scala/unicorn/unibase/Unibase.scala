@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@
 package unicorn.unibase
 
 import unicorn.bigtable.{RowScan, Column, BigTable, Database}
-import unicorn.unibase.graph.Graph
+//import unicorn.unibase.graph.Graph
 //import unicorn.unibase.graph.{Graph, KnowledgeGraph}
 import unicorn.json._
-import unicorn.util._
 
 /** Extending Cabinet, a Unibase supports the data models that require scan operations.
   *
   * @author Haifeng Li
   */
 class Unibase[+T <: BigTable with RowScan](db: Database[T]) extends Cabinet(db) {
-  import unicorn.unibase.graph.{KnowledgeGraphOSP, KnowledgeGraphPOS, KnowledgeGraphSPO}
-
+  //import unicorn.unibase.graph.{KnowledgeGraphOSP, KnowledgeGraphPOS, KnowledgeGraphSPO}
+/*
   /** Returns a document table.
     * @param name The name of table.
     */
   override def apply(name: String): Table = {
     new Table(db(name), TableMeta(db, name))
   }
+  */
 /*
   /** Creates a knowledge graph table.
     * @param name the name of graph.

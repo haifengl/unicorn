@@ -51,12 +51,7 @@ class Drawer(val table: BigTable, val rowkey: RowKey) {
     val cell = table(rowkey(key), DocumentColumnFamily, DocumentColumn)
     cell.map(serializer.deserialize(_))
   }
-/*
-  /** Returns true if the document exists. */
-  def contains(key: Key): Boolean = {
-    table.apply(rowkey(key), DocumentColumnFamily, DocumentColumn).isDefined
-  }
-*/
+
   /** Upserts a document. If a document with same key exists, it will overwritten.
     * The _id field of document will be used as the primary key in the table.
     * If the document doesn't have _id field, a random UUID will be generated as _id.
@@ -67,20 +62,7 @@ class Drawer(val table: BigTable, val rowkey: RowKey) {
   def upsert(doc: JsObject): Unit = {
     table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
   }
-/*
-  /** Inserts a document. Different from upsert, this operation checks if the document already
-    * exists first.
-    *
-    * @param doc the document.
-    * @return true if the document is inserted, false if the document already existed.
-    */
-  def insert(doc: JsObject): Unit = {
-    val key = rowkey(doc)
-    require(!contains(key), s"Document $key already exists")
 
-    upsert(doc)
-  }
-*/
   /** Removes a document.
     *
     * @param key the document id.

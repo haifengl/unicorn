@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@ import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
-import unicorn.oid.BsonObjectId
+
 import unicorn.json._
+import unicorn.bigtable.UTF8
 
 /**
   * @author Haifeng Li
@@ -36,40 +37,42 @@ package object unibase {
   /** Descending sort order. */
   val DESCENDING = HBaseOrder.DESCENDING
 
+  private[unibase] implicit def bytes2string(x: Array[Byte]) = new String(x, UTF8)
+
   implicit def int2Key(x: Int) = IntKey(x)
   implicit def long2Key(x: Long) = LongKey(x)
   implicit def double2Key(x: Double) = DoubleKey(x)
-  implicit def bigDecimal2Key(x: BigDecimal) = BigDecimalKey(x)
+  implicit def bigDecimal2Key(x: BigDecimal) = DecimalKey(x)
   implicit def string2Key(x: String) = StringKey(x)
-  implicit def date2Key(x: LocalDate) = LocalDateKey(x)
-  implicit def dateTime2Key(x: LocalDateTime) = LocalDateTimeKey(x)
+  implicit def date2Key(x: LocalDate) = DateKey(x)
+  implicit def dateTime2Key(x: LocalDateTime) = DateTimeKey(x)
   implicit def timestamp2Key(x: Timestamp) = TimestampKey(x)
   implicit def uuid2Key(x: UUID) = UUIDKey(x)
-  implicit def bsonObjectId2Key(x: BsonObjectId) = BsonObjectIdKey(x)
+  implicit def objectId2Key(x: ObjectId) = ObjectIdKey(x)
 
   implicit def int2Key(x: JsInt) = IntKey(x)
   implicit def long2Key(x: JsLong) = LongKey(x)
   implicit def double2Key(x: JsDouble) = DoubleKey(x)
-  implicit def bigDecimal2Key(x: JsDecimal) = BigDecimalKey(x)
+  implicit def bigDecimal2Key(x: JsDecimal) = DecimalKey(x)
   implicit def string2Key(x: JsString) = StringKey(x)
-  implicit def date2Key(x: JsDate) = LocalDateKey(x)
-  implicit def dateTime2Key(x: JsDateTime) = LocalDateTimeKey(x)
+  implicit def date2Key(x: JsDate) = DateKey(x)
+  implicit def dateTime2Key(x: JsDateTime) = DateTimeKey(x)
   implicit def timestamp2Key(x: JsTimestamp) = TimestampKey(x)
   implicit def uuid2Key(x: JsUUID) = UUIDKey(x)
-  implicit def bsonObjectId2Key(x: JsObjectId) = BsonObjectIdKey(x)
+  implicit def objectId2Key(x: JsObjectId) = ObjectIdKey(x)
 
   implicit def json2Key(json: JsValue): Key = {
     json match {
       case JsInt(x) => IntKey(x)
       case JsLong(x) => LongKey(x)
       case JsDouble(x) => DoubleKey(x)
-      case JsDecimal(x) => BigDecimalKey(x)
+      case JsDecimal(x) => DecimalKey(x)
       case JsString(x) => StringKey(x)
-      case JsDate(x) => LocalDateKey(x)
-      case JsDateTime(x) => LocalDateTimeKey(x)
+      case JsDate(x) => DateKey(x)
+      case JsDateTime(x) => DateTimeKey(x)
       case JsTimestamp(x) => TimestampKey(x)
       case JsUUID(x) => UUIDKey(x)
-      case JsObjectId(x) => BsonObjectIdKey(x)
+      case JsObjectId(x) => ObjectIdKey(x)
       case JsArray(elements) =>
         val keys = elements.map { e =>
           e match {
@@ -96,11 +99,16 @@ package object unibase {
   private[unibase] val POSITIVE_INFINITY = Array(0x23.toByte)
   private[unibase] val NaN               = Array(0x25.toByte)
 
+  private[unibase] val TABLE_TYPE_DRAWER     = "DRAWER"
+  private[unibase] val TABLE_TYPE_TABLE      = "TABLE"
+  private[unibase] val TABLE_TYPE_GRAPH      = "GRAPH"
+  private[unibase] val TABLE_TYPE_INDEX      = "INDEX"
+  private[unibase] val TABLE_TYPE_TEXT_INDEX = "TEXT"
+
   private[unibase] val DefaultRowKeyField = "_id"
-  private[unibase] val DefaultDocumentColumnFamily = "doc"
-  private[unibase] val DefaultLocalityField = "default_locality"
+  private[unibase] val DocumentColumnFamily = "d"
+  private[unibase] val DocumentColumn       = Array(1.toByte)
 
   // Note that "." cannot be part of table name in Accumulo.
   private[unibase] val MetaTableName = "unicorn_meta_table"
-  private[unibase] val MetaTableColumnFamily = "meta"
 }

@@ -19,8 +19,11 @@ package unicorn.unibase
 import unicorn.bigtable.{BigTable, Database}
 import unicorn.json._
 
-/** A Cabinet is a database of documents. A collection of documents are called Drawer.
-  * In addition to documents, Cabinet also supports the (property) graph model.
+/** A Cabinet is a database of documents. A collection of documents can be
+  * stored as a Drawer or Table. Drawer uses a compact storage format but
+  * can only get and save a document as the whole. In contrast, Table
+  * allows us to get/update only some (top) fields of documents.
+  * In addition to documents, Cabinet also supports the graph model.
   *
   * @author Haifeng Li
   */
@@ -32,7 +35,7 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
       metaTable.close
     }
 
-    new Drawer(db(MetaTableName), RowKey("table"))
+    new Table(db(MetaTableName), RowKey("table"))
   }
 
   /** Returns a document drawer.
@@ -174,10 +177,11 @@ private[unicorn] object TableMeta {
     val rowkey = key match {
       case PrimitiveRowKey(key, order) => JsObject(key -> JsString(order.toString))
       case CompoundRowKey(keys, capacity) =>
-        JsObject("compound_key" ->
-          JsArray(keys.map { case PrimitiveRowKey(key, order) =>
-            JsObject(key -> JsString(order.toString))
-          }), "capacity" -> capacity
+        JsObject(
+          "compound_key" -> JsArray(keys.map { case PrimitiveRowKey(key, order) =>
+              JsObject(key -> JsString(order.toString))
+            }),
+          "capacity" -> capacity
         )
     }
 
@@ -210,12 +214,7 @@ private[unicorn] object TableMeta {
       throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
 
     val field = fields(0)
-    val order = field._2.toString.toLowerCase match {
-      case "ascending" => ASCENDING
-      case "descending" => DESCENDING
-      case order => throw new IllegalArgumentException(s"Unknown sort order: $order")
-    }
-
-    PrimitiveRowKey(field._1, order)
+    // Maybe this is a bug of Scala compiler. It doesn't recognize Order type alias.
+    PrimitiveRowKey(field._1, org.apache.hadoop.hbase.util.Order.valueOf(field._2))
   }
 }
