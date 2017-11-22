@@ -52,8 +52,6 @@ class Table(val table: BigTable, val rowkey: RowKey) extends UpdateOps {
   }
 
   /** Upserts a document. If a document with same key exists, it will overwritten.
-    * The _id field of document will be used as the primary key in the table.
-    * If the document doesn't have _id field, a random UUID will be generated as _id.
     *
     * @param doc the document.
     * @return the document id.
@@ -88,23 +86,4 @@ class Table(val table: BigTable, val rowkey: RowKey) extends UpdateOps {
   def delete(key: Key): Unit = {
     table.delete(rowkey(key))
   }
-/*
-  def scan: DocumentScanner = {
-    new DocumentScanner(table.scanAll())
-  }
-  */
 }
-/*
-/** Row scan iterator */
-class DocumentScanner(rows: RowScanner) extends Iterator[JsObject] {
-  val serializer = new DocumentSerializer()
-
-  def close: Unit = rows.close
-
-  override def hasNext: Boolean = rows.hasNext
-
-  override def next: JsObject = {
-    serializer.deserialize(rows.next.families).get
-  }
-}
-*/

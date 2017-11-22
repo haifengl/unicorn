@@ -53,11 +53,8 @@ class Drawer(val table: BigTable, val rowkey: RowKey) {
   }
 
   /** Upserts a document. If a document with same key exists, it will overwritten.
-    * The _id field of document will be used as the primary key in the table.
-    * If the document doesn't have _id field, a random UUID will be generated as _id.
     *
     * @param doc the document.
-    * @return the document id.
     */
   def upsert(doc: JsObject): Unit = {
     table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
@@ -65,7 +62,7 @@ class Drawer(val table: BigTable, val rowkey: RowKey) {
 
   /** Removes a document.
     *
-    * @param key the document id.
+    * @param key the document key.
     */
   def delete(key: Key): Unit = {
     table.delete(rowkey(key))

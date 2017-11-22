@@ -50,4 +50,4 @@ case class TimestampKey(key: Timestamp) extends PrimitiveKey
 case class ObjectIdKey(key: ObjectId) extends PrimitiveKey
 case class UUIDKey(key: UUID) extends PrimitiveKey
 
-case class CompoundKey(keys: Seq[PrimitiveKey]) extends Key
+case class CompositeKey(keys: Seq[PrimitiveKey]) extends Key

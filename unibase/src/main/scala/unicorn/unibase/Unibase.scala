@@ -16,9 +16,7 @@
 
 package unicorn.unibase
 
-import unicorn.bigtable.{RowScan, Column, BigTable, Database}
-//import unicorn.unibase.graph.Graph
-//import unicorn.unibase.graph.{Graph, KnowledgeGraph}
+import unicorn.bigtable._
 import unicorn.json._
 
 /** Extending Cabinet, a Unibase supports the data models that require scan operations.
@@ -71,4 +69,3 @@ object Unibase {
     new Unibase[T](db)
   }
 }
-

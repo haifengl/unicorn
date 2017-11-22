@@ -169,7 +169,7 @@ case class PrimitiveRowKey(key: String, order: Order = ASCENDING) extends RowKey
   }
 }
 
-/** A key made from multiple primitive keys,
+/** A composite key is made from multiple primitive keys,
   *
   * @param keys The elements of compound key.
   * @param capacity The maximum byte array size of row key.
@@ -177,7 +177,7 @@ case class PrimitiveRowKey(key: String, order: Order = ASCENDING) extends RowKey
   *                 for most applications. If longer keys are
   *                 needed, think again.
   */
-case class CompoundRowKey(keys: Seq[PrimitiveRowKey], capacity: Int = 256) extends RowKey {
+case class CompositeRowKey(keys: Seq[PrimitiveRowKey], capacity: Int = 256) extends RowKey {
 
   override def apply(json: JsObject): Array[Byte] = {
     val range = new SimplePositionedMutableByteRange(capacity)
@@ -230,12 +230,12 @@ case class CompoundRowKey(keys: Seq[PrimitiveRowKey], capacity: Int = 256) exten
   }
 
   override def apply(key: Key): Array[Byte] = {
-    if (!key.isInstanceOf[CompoundKey])
-      throw new IllegalArgumentException("CompoundRowKey applies on primitive key: " + key)
+    if (!key.isInstanceOf[CompositeKey])
+      throw new IllegalArgumentException("CompositeRowKey applies on primitive key: " + key)
 
-    val compound = key.asInstanceOf[CompoundKey]
+    val compound = key.asInstanceOf[CompositeKey]
     if (compound.keys.size != keys.size)
-      throw new IllegalArgumentException("Compound key size: " + compound.keys.size + ", expected: " + keys.size)
+      throw new IllegalArgumentException("Composite key size: " + compound.keys.size + ", expected: " + keys.size)
 
     val range = new SimplePositionedMutableByteRange(capacity)
     keys.zip(compound.keys).foreach { case (PrimitiveRowKey(_, order), key) =>
@@ -289,5 +289,5 @@ case class CompoundRowKey(keys: Seq[PrimitiveRowKey], capacity: Int = 256) exten
 object RowKey {
   def apply(key: String, order: Order = ASCENDING) = PrimitiveRowKey(key, order)
 
-  def apply(keys: String*) = CompoundRowKey(keys.map(PrimitiveRowKey(_)))
+  def apply(keys: String*) = CompositeRowKey(keys.map(PrimitiveRowKey(_)))
 }

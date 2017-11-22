@@ -176,7 +176,7 @@ private[unicorn] object TableMeta {
   def apply(table: String, `type`: String, key: RowKey): JsObject = {
     val rowkey = key match {
       case PrimitiveRowKey(key, order) => JsObject(key -> JsString(order.toString))
-      case CompoundRowKey(keys, capacity) =>
+      case CompositeRowKey(keys, capacity) =>
         JsObject(
           "compound_key" -> JsArray(keys.map { case PrimitiveRowKey(key, order) =>
               JsObject(key -> JsString(order.toString))
@@ -198,7 +198,7 @@ private[unicorn] object TableMeta {
 
       case JsArray(keys) =>
         val capacity: Int = key.capacity
-        CompoundRowKey(keys.map { key => primitive(key) }, capacity)
+        CompositeRowKey(keys.map { key => primitive(key) }, capacity)
 
       case _ => throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
     }

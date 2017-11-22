@@ -28,54 +28,63 @@ trait Scan {
   val rowkey: RowKey
 
   /** Scan the whole table. */
-  def scan: Scanner = {
-    scanner(table.scan(DocumentColumnFamily))
+  def scan(fields: String*): Scanner = {
+    scanner(table.scan(DocumentColumnFamily, fields))
   }
 
   /** Scan the the rows whose key starts with the given prefix. */
-  def scan(prefix: Key): Scanner = {
-    if (prefix.isInstanceOf[CompoundKey]) {
-      if (!rowkey.isInstanceOf[CompoundRowKey])
-        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound row key")
+  def scan(prefix: Key, fields: String*): Scanner = {
+    if (prefix.isInstanceOf[CompositeKey]) {
+      if (!rowkey.isInstanceOf[CompositeRowKey])
+        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound key")
       else {
-        val key = prefix.asInstanceOf[CompoundKey]
-        val compound = rowkey.asInstanceOf[CompoundRowKey]
+        val key = prefix.asInstanceOf[CompositeKey]
+        val compound = rowkey.asInstanceOf[CompositeRowKey]
         if (key.keys.size > compound.keys.size)
           throw new IllegalArgumentException("Too many compound key elements.")
       }
     }
 
-    scanner(table.scanPrefix(rowkey(prefix), DocumentColumnFamily))
+    scanner(table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields))
   }
 
   /** Scan the the rows in the given range.
     * @param start row to start scanner at or after (inclusive)
     * @param end row to stop scanner before (exclusive)
     */
-  def scan(start: Key, end: Key): Scanner = {
-    if (start.isInstanceOf[CompoundKey]) {
-      if (!rowkey.isInstanceOf[CompoundRowKey])
-        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound row key")
+  def scan(start: Key, end: Key, fields: String*): Scanner = {
+    if (start.isInstanceOf[CompositeKey]) {
+      if (!rowkey.isInstanceOf[CompositeRowKey])
+        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound key")
       else {
-        val key = start.asInstanceOf[CompoundKey]
-        val compound = rowkey.asInstanceOf[CompoundRowKey]
+        val key = start.asInstanceOf[CompositeKey]
+        val compound = rowkey.asInstanceOf[CompositeRowKey]
         if (key.keys.size > compound.keys.size)
           throw new IllegalArgumentException("Too many compound key elements.")
       }
     }
 
-    if (end.isInstanceOf[CompoundKey]) {
-      if (!rowkey.isInstanceOf[CompoundRowKey])
-        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound row key")
+    if (end.isInstanceOf[CompositeKey]) {
+      if (!rowkey.isInstanceOf[CompositeRowKey])
+        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound key")
       else {
-        val key = end.asInstanceOf[CompoundKey]
-        val compound = rowkey.asInstanceOf[CompoundRowKey]
+        val key = end.asInstanceOf[CompositeKey]
+        val compound = rowkey.asInstanceOf[CompositeRowKey]
         if (key.keys.size > compound.keys.size)
           throw new IllegalArgumentException("Too many compound key elements.")
       }
     }
 
-    scanner(table.scan(rowkey(start), rowkey(end), DocumentColumnFamily))
+    val startKey = rowkey(start)
+    val endKey = rowkey(end)
+    val c = compareByteArray(startKey, endKey)
+    if (c == 0)
+      throw new IllegalArgumentException("Start and end keys are the same")
+
+    if (c < 0)
+      scanner(table.scan(startKey, endKey, DocumentColumnFamily, fields))
+    else
+      scanner(table.scan(endKey, startKey, DocumentColumnFamily, fields))
   }
 
   private def scanner(rows: RowScanner): Scanner = {
@@ -95,7 +104,8 @@ trait Scanner extends Traversable[JsValue] {
   def foreach[U](f: JsValue => U): Unit = {
     while (rows.hasNext) {
       val columns = rows.next.families(0).columns
-      f(deserialize(columns))
+      val doc = deserialize(columns)
+      f(doc)
     }
   }
 
