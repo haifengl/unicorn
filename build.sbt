@@ -73,17 +73,17 @@ lazy val rocksdb = project.in(file("rocksdb")).settings(commonSettings: _*).depe
 
 //lazy val index = project.in(file("index")).settings(nonPubishSettings: _*).dependsOn(bigtable, json, hbase % "test")
 
-lazy val unibase = project.in(file("unibase")).settings(commonSettings: _*).dependsOn(json, snowflake, bigtable, accumulo % "test")
+lazy val unibase = project.in(file("unibase")).settings(commonSettings: _*).dependsOn(json, bigtable, snowflake % "test", accumulo % "test")
 
 lazy val narwhal = project.in(file("narwhal")).settings(commonSettings: _*).dependsOn(unibase, hbase)
 
-lazy val sql = project.in(file("sql")).settings(commonSettings: _*).dependsOn(narwhal)
+lazy val sql = project.in(file("sql")).settings(commonSettings: _*).dependsOn(unibase)
 
 //lazy val transaction = project.in(file("transaction")).settings(commonSettings: _*).dependsOn(narwhal)
 
 //lazy val search = project.in(file("search")).settings(nonPubishSettings: _*).dependsOn(unibase)
 
-lazy val shell = project.in(file("shell")).settings(nonPubishSettings: _*).dependsOn(unibase, narwhal, sql, rocksdb)
+lazy val shell = project.in(file("shell")).settings(nonPubishSettings: _*).dependsOn(narwhal, sql)
 
-lazy val rhino = project.in(file("rhino")).enablePlugins(SbtTwirl).settings(nonPubishSettings: _*).dependsOn(unibase, narwhal)
+lazy val rhino = project.in(file("rhino")).enablePlugins(SbtTwirl).settings(nonPubishSettings: _*).dependsOn(narwhal)
 
