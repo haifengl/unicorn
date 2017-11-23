@@ -25,39 +25,49 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class Table(val table: BigTable, val rowkey: RowKey) extends UpdateOps {
+class Table(val table: BigTable, val rowkey: RowKey) extends Documents with UpdateOps {
   /** Document serializer. */
   val serializer = new JsonSerializer()
 
   /** The table name. */
-  val name = table.name
+  override val name = table.name
 
-  /** Gets a document.
-    *
-    * @param key document key.
-    * @param fields the fields to get. Get the whole document if no field is given.
-    * @return an option of document. None if it doesn't exist.
-    */
-  def apply(key: Key, fields: String*): Option[JsValue] = {
-    val columns = table.get(rowkey(key), DocumentColumnFamily, fields)
+  override def apply(key: Array[Byte]): Option[JsObject] = {
+    val columns = table.get(key, DocumentColumnFamily)
+    if (columns.isEmpty) return None
 
-    if (columns.isEmpty) None
-    else {
-      val doc = JsObject()
-      columns.foreach { case Column(qualifier, value, _) =>
-        doc(qualifier) = serializer.deserialize(value)
-      }
-      Some(doc)
+    val doc = JsObject()
+    columns.foreach { case Column(qualifier, value, _) =>
+      doc(qualifier) = serializer.deserialize(value)
     }
+    Some(doc)
   }
 
-  /** Upserts a document. If a document with same key exists, it will overwritten.
-    *
-    * @param doc the document.
-    * @return the document id.
-    */
-  def upsert(doc: JsObject): Unit = {
+  override def apply(key: Key): Option[JsObject] = {
+    apply(rowkey(key))
+  }
+
+  /** Gets a document by row key. */
+  def apply(key: Array[Byte], fields: String*): JsObject = {
+    val columns = table.get(key, DocumentColumnFamily, fields)
+
+    val doc = JsObject()
+    columns.foreach { case Column(qualifier, value, _) =>
+      doc(qualifier) = serializer.deserialize(value)
+    }
+    doc
+  }
+
+  def apply(key: Key, fields: String*): JsObject = {
+    apply(rowkey(key), fields: _*)
+  }
+
+  override def upsert(doc: JsObject): Unit = {
     table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
+  }
+
+  override def delete(key: Key): Unit = {
+    table.delete(rowkey(key))
   }
 
   /** Updates a document. The supported update operators include
@@ -77,13 +87,5 @@ class Table(val table: BigTable, val rowkey: RowKey) extends UpdateOps {
     if ($set.isInstanceOf[JsObject]) set(key, $set.asInstanceOf[JsObject])
 
     if ($unset.isInstanceOf[JsObject]) unset(key, $unset.asInstanceOf[JsObject])
-  }
-
-  /** Removes a document.
-    *
-    * @param key the document id.
-    */
-  def delete(key: Key): Unit = {
-    table.delete(rowkey(key))
   }
 }

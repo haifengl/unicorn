@@ -35,36 +35,27 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class Drawer(val table: BigTable, val rowkey: RowKey) {
+class Drawer(val table: BigTable, val rowkey: RowKey) extends Documents {
   /** Document serializer. */
   val serializer = new JsonSerializer()
 
   /** The table name. */
-  val name = table.name
+  override val name = table.name
 
-  /** Gets a document.
-    *
-    * @param key document key.
-    * @return an option of document. None if it doesn't exist.
-    */
-  def apply(key: Key): Option[JsValue] = {
-    val cell = table(rowkey(key), DocumentColumnFamily, DocumentColumn)
-    cell.map(serializer.deserialize(_))
+  override def apply(key: Array[Byte]): Option[JsObject] = {
+    val cell = table(key, DocumentColumnFamily, DocumentColumn)
+    cell.map(serializer.deserialize(_).asInstanceOf[JsObject])
   }
 
-  /** Upserts a document. If a document with same key exists, it will overwritten.
-    *
-    * @param doc the document.
-    */
-  def upsert(doc: JsObject): Unit = {
+  override def apply(key: Key): Option[JsObject] = {
+    apply(rowkey(key))
+  }
+
+  override def upsert(doc: JsObject): Unit = {
     table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
   }
 
-  /** Removes a document.
-    *
-    * @param key the document key.
-    */
-  def delete(key: Key): Unit = {
+  override def delete(key: Key): Unit = {
     table.delete(rowkey(key))
   }
 }
