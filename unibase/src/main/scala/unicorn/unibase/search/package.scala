@@ -22,6 +22,7 @@ import edu.stanford.nlp.ling.CoreAnnotations.{LemmaAnnotation, SentencesAnnotati
 import edu.stanford.nlp.pipeline.{Annotation, StanfordCoreNLP}
 import smile.nlp.dictionary.StopWords
 import smile.nlp.dictionary.{EnglishPunctuations, EnglishStopWords}
+import smile.nlp.normalizer.SimpleNormalizer
 
 /**
   * @author Haifeng Li
@@ -51,7 +52,7 @@ package object search {
     * unique word.
     */
   def tokenize(text: String): (Int, Map[String, Int]) = {
-    val document = new Annotation(text)
+    val document = new Annotation(SimpleNormalizer.getInstance().normalize(text))
     tokenizer.annotate(document)
     val tokens = document.get(classOf[TokensAnnotation])
 
