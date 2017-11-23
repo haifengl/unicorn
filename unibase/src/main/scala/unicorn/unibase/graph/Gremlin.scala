@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@ import unicorn.json.{JsArray, JsObject, JsValue}
   *
   * @author Haifeng Li
   */
-class Gremlin(val traveler: Traveler) {
+class Gremlin[V <: VertexLike, E <: EdgeLike[V]](val traveler: Traveler[V, E]) {
+  /*
   def v(id: Long): GremlinVertices = new GremlinVertices(traveler, Seq(id))
   def v(id: Array[Long]): GremlinVertices = new GremlinVertices(traveler, id)
   def v(key: String*): GremlinVertices = {
@@ -34,10 +35,11 @@ class Gremlin(val traveler: Traveler) {
     }
     new GremlinVertices(traveler, id)
   }
+  */
 }
 
-class GremlinVertices(val traveler: Traveler, val vertices: Iterable[Long]) extends Dynamic {
-
+class GremlinVertices[V <: VertexLike, E <: EdgeLike[V]](val traveler: Traveler[V, E], val vertices: Iterable[V]) extends Dynamic {
+/*
   override def toString: String = {
     val properties = vertices.map(traveler.vertex(_).properties)
     JsArray(properties.toSeq).toString
@@ -181,4 +183,5 @@ class GremlinEdges(val traveler: Traveler, val edges: Iterable[Edge]) extends Dy
 
     new GremlinVertices(traveler, vertices)
   }
+  */
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
-  * (C) Copyright 2015 ADP, LLC.
+  * (C) Copyright 2017 Haifeng Li
   *
   * Licensed under the Apache License, Version 2.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.specs2.mutable._
 import org.specs2.specification.BeforeAfterAll
 import unicorn.bigtable.accumulo.Accumulo
 import unicorn.json._
-import unicorn.oid.Snowflake
+import unicorn.snowflake.Snowflake
 import unicorn.unibase._
 
 /**

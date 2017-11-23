@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,110 +78,70 @@ class TableSpec extends Specification with BeforeAfterAll {
       |}
     """.stripMargin).asInstanceOf[JsObject]
 
+  val key = ObjectId()
+  json("_id") = key
+
   override def beforeAll = {
     db.createTable(tableName)
   }
 
   override def afterAll = {
-    db.dropTable(tableName)
+    db.drop(tableName)
   }
 
   "Table" should {
     "upsert, get, remove" in {
-      val bucket = db(tableName)
-      val key = bucket.upsert(json)
-      key === json("_id")
-      val obj = bucket(key)
-      obj.get === json
-
-      bucket.delete(key)
-      bucket(key) === None
-    }
-    "insert" in {
-      val bucket = db(tableName)
+      val bucket = db.table(tableName)
       bucket.upsert(json)
-      bucket.insert(json) must throwA[IllegalArgumentException]
-    }
-    "locality" in {
-      val locality = Map("_id" -> "id", "store" -> "store").withDefaultValue("doc")
-      db.createTable("unibase_test_locality", Seq("id", "doc", "store"), locality)
-      val bucket = db("unibase_test_locality")
-      val key = bucket.upsert(json)
-      key === json("_id")
+
       val obj = bucket(key)
       obj.get === json
 
-      bucket.get(JsObject("_id" -> key, "owner" -> 1, "address" -> 1)).get === JsObject("_id" -> key, "owner" -> json.owner, "phone" -> json.phone, "address" -> json.address)
-      bucket(key, "store").get === JsObject("_id" -> key, "store" -> json.store)
-
       bucket.delete(key)
       bucket(key) === None
-
-      db.dropTable("unibase_test_locality")
-      bigtable.tableExists("unibase_test_locality") === false
     }
+    /*
+    "insert" in {
+      val bucket = db.table(tableName)
+      bucket.upsert(json)
+      bucket.insert(json) === false
+    }
+    */
     "update.set" in {
-      val bucket = db(tableName)
-      val key = bucket.upsert(json)
+      val bucket = db.table(tableName)
 
       val update = JsonParser(
         """
           | {
           |   "$set": {
           |     "owner": "Poor",
-          |     "gender": "M",
-          |     "store.book.0.price": 9.95
+          |     "gender": "M"
           |   }
           | }
         """.stripMargin).asInstanceOf[JsObject]
-      update("_id") = key
-      bucket.update(update)
 
-      val doc = bucket(key, "owner", "store.book.0").get
+      bucket.update(key, update)
+
+      val doc = bucket(key, "owner", "gender").get
       doc.owner === JsString("Poor")
       doc.gender === JsString("M")
-      doc.store.book(0).price === JsDouble(9.95)
     }
     "update.unset" in {
-      val bucket = db(tableName)
-      val key = bucket.upsert(json)
+      val bucket = db.table(tableName)
 
       val update = JsonParser(
         """
           | {
           |   "$unset": {
           |     "owner": 1,
-          |     "address": 1,
-          |     "store.book.0": 1
+          |     "address": 1
           |   }
           | }
         """.stripMargin).asInstanceOf[JsObject]
-      update("_id") = key
-      bucket.update(update)
 
-      val doc = bucket(key, "owner", "store.book.0").get
-      doc.owner === JsUndefined
-      doc.address === JsUndefined
-      doc.store.book(0) === JsUndefined
-    }
-    "append only" in {
-      db.createTable("unicorn_append_only", appendOnly = true)
-      val bucket = db("unicorn_append_only")
-      bucket.delete(JsString("key")) must throwA[UnsupportedOperationException]
-      bucket.update(JsObject("a" -> JsInt(1))) must throwA[UnsupportedOperationException]
-      db.dropTable("unicorn_append_only")
-      1 === 1
-    }
-    "multi-tenancy" in {
-      val bucket = db(tableName)
-      bucket.tenant = "IBM"
-      val key = bucket.upsert(json)
-      bucket.tenant = "ADP"
-      bucket(key) === None
-      bucket.tenant = "IBM"
-      val doc = bucket(key).get
-      doc("_id") === key
-      doc("_tenant") === JsString("IBM")
+      bucket.update(key, update)
+
+      bucket(key, "owner", "address") === None
     }
   }
 }

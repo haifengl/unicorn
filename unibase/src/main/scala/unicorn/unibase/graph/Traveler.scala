@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,8 @@ import VertexColor._
   *
   * @author Haifeng Li
   */
-trait Traveler {
+trait Traveler[V <: VertexLike, E <: EdgeLike[V]] {
+  /*
   /** Translates a vertex string key to 64 bit id. */
   def idOf(key: String): Option[Long]
 
@@ -69,9 +70,9 @@ trait Traveler {
 
   /** Returns the vertex of given string key. */
   def vertex(key: String): Vertex
-
+*/
   /** The color mark if a vertex was already visited. */
-  def color(id: Long): VertexColor
+  def color(vertex: V): VertexColor
 
   /** Visit a vertex during graph traversal.
     *
@@ -79,7 +80,7 @@ trait Traveler {
     * @param edge the incoming arc (None for starting vertex).
     * @param hops the number of hops from the starting vertex to this vertex.
     */
-  def visit(vertex: Vertex, edge: Option[Edge], hops: Int): Unit
+  def visit(vertex: V, edge: Option[E], hops: Int): Unit
 
   /** Returns an iterator of the neighbors and associated edges of a vertex.
     *
@@ -87,22 +88,17 @@ trait Traveler {
     * @param hops the number of hops from starting vertex, which may be used for early termination.
     * @return an iterator of the outgoing edges
     */
-  def neighbors(vertex: Vertex, hops: Int): Iterator[(Long, Edge)]
+  def neighbors(vertex: V, hops: Int): Iterator[E]
 
   /** The weight of edge (e.g. shortest path search). */
-  def weight(edge: Edge): Double = edge.properties match {
-    case JsInt(x) => x
-    case JsCounter(x) => x
-    case JsLong(x) => x
-    case _ => 1.0
-  }
+  def weight(edge: E): Double
 }
 
 /** Traveler for A* searcher. */
-trait AstarTraveler extends Traveler {
+trait AstarTraveler[V <: VertexLike, E <: EdgeLike[V]] extends Traveler[V, E] {
   /** The future path-cost function, which is an admissible
     * "heuristic estimate" of the distance from the current vertex to the goal.
     * Note that the heuristic function must be monotonic.
     */
-  def h(v1: Long, v2: Long): Double
+  def h(edge: E): Double
 }

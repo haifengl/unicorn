@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,12 +32,12 @@ import Direction._
   *
   * @author Haifeng Li
   */
-class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler {
+class SimpleTraveler[V <: VertexLike, E <: EdgeLike[V]](val graph: GraphLike[V, E], val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler[V, E] {
   /** The color mark if a vertex was already visited. */
-  private val mark = collection.mutable.Map[Long, VertexColor]().withDefaultValue(White)
+  private val mark = collection.mutable.Map[V, VertexColor]().withDefaultValue(White)
 
   /** The cache of vertices. */
-  private val cache = collection.mutable.Map[Long, Vertex]()
+  private val cache = collection.mutable.Map[V, Seq[E]]()
 
   /** User defined vertex visit function. The default implementation is nop.
     * The user should create a sub class overriding this method.
@@ -46,7 +46,7 @@ class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empt
     * @param edge the incoming arc (None for starting vertex).
     * @param hops the number of hops from the starting vertex to this vertex.
     */
-  def apply(vertex: Vertex, edge: Option[Edge], hops: Int): Unit = {
+  def apply(vertex: V, edge: Option[E], hops: Int): Unit = {
 
   }
 
@@ -55,7 +55,7 @@ class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empt
     mark.clear
     cache.clear
   }
-
+/*
   override def vertex(id: Long): Vertex = {
     cache.get(id) match {
       case Some(node) => node
@@ -76,10 +76,11 @@ class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empt
   override def idOf(key: String): Option[Long] = {
     graph.idOf(key)
   }
+*/
+  override def color(vertex: V): VertexColor = mark(vertex)
 
-  override def color(id: Long): VertexColor = mark(id)
-
-  override def visit(vertex: Vertex, edge: Option[Edge], hops: Int): Unit = {
+  override def visit(vertex: V, edge: Option[E], hops: Int): Unit = {
+    /*
     apply(vertex, edge, hops)
 
     val black = vertex.neighbors.forall { neighbor =>
@@ -87,9 +88,11 @@ class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empt
     }
 
     mark(vertex.id) = if (black) Black else Gray
+    */
   }
 
-  override def neighbors(vertex: Vertex, hops: Int): Iterator[(Long, Edge)] = {
+  override def neighbors(vertex: V, hops: Int): Iterator[E] = {
+    /*
     if (hops >= maxHops) return Seq.empty.iterator
 
     val edges = if (relationships.isEmpty) vertex.edges
@@ -101,5 +104,6 @@ class SimpleTraveler(val graph: Graph, val relationships: Set[String] = Set.empt
       val neighbor = if (edge.to != vertex.id) edge.to else edge.from
       (neighbor, edge)
     }.iterator
+    */
   }
 }

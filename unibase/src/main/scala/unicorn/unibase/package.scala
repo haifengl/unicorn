@@ -78,11 +78,11 @@ package object unibase {
           e match {
             case JsNull | JsUndefined => null
             case JsObject(_) | JsArray(_) =>
-              throw new IllegalArgumentException("Compound key must consist of primitive keys: " + e)
+              throw new IllegalArgumentException("Composite key must consist of primitive keys: " + e)
             case _ => json2Key(e).asInstanceOf[PrimitiveKey]
           }
         }
-        CompoundKey(keys)
+        CompositeKey(keys)
       case _ => throw new IllegalArgumentException("Unsupported Key type: " + json)
     }
   }
@@ -107,7 +107,7 @@ package object unibase {
 
   private[unibase] val DefaultRowKeyField = "_id"
   private[unibase] val DocumentColumnFamily = "d"
-  private[unibase] val DocumentColumn       = Array(1.toByte)
+  private[unibase] val DocumentColumn       = "d".getBytes(UTF8)
 
   // Note that "." cannot be part of table name in Accumulo.
   private[unibase] val MetaTableName = "unicorn_meta_table"

@@ -23,28 +23,36 @@ import unicorn.json._
   *
   * @author Haifeng Li
   */
-trait Scan {
+trait FindOps {
   val table: BigTable with RowScan
   val rowkey: RowKey
+  val index: Seq[Index]
+
+  /** Searches the table.
+    * @param query The query predict object in MongoDB style. Supported operators
+    *              include \$and, \$or, \$eq, \$ne, \$gt, \$gte (or \$ge), \$lt,
+    *              \$lte (or \$le), and \$exists.
+    * @param fields Top level fields of documents to return. Empty list returns
+    *               the whole document.This parameter should not be used with Drawers.
+    * @return an iterator of matched document.
+    */
+  /*
+  def find(query: JsObject, fields: String*): Traversable[JsValue] = {
+    if (query.fields.isEmpty) {
+      return scan(fields)
+    }
+
+
+  }
+  */
 
   /** Scan the whole table. */
-  def scan(fields: String*): Scanner = {
+  private def scan(fields: Seq[String]): Scanner = {
     scanner(table.scan(DocumentColumnFamily, fields))
   }
 
   /** Scan the the rows whose key starts with the given prefix. */
   def scan(prefix: Key, fields: String*): Scanner = {
-    if (prefix.isInstanceOf[CompositeKey]) {
-      if (!rowkey.isInstanceOf[CompositeRowKey])
-        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound key")
-      else {
-        val key = prefix.asInstanceOf[CompositeKey]
-        val compound = rowkey.asInstanceOf[CompositeRowKey]
-        if (key.keys.size > compound.keys.size)
-          throw new IllegalArgumentException("Too many compound key elements.")
-      }
-    }
-
     scanner(table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields))
   }
 
@@ -53,28 +61,6 @@ trait Scan {
     * @param end row to stop scanner before (exclusive)
     */
   def scan(start: Key, end: Key, fields: String*): Scanner = {
-    if (start.isInstanceOf[CompositeKey]) {
-      if (!rowkey.isInstanceOf[CompositeRowKey])
-        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound key")
-      else {
-        val key = start.asInstanceOf[CompositeKey]
-        val compound = rowkey.asInstanceOf[CompositeRowKey]
-        if (key.keys.size > compound.keys.size)
-          throw new IllegalArgumentException("Too many compound key elements.")
-      }
-    }
-
-    if (end.isInstanceOf[CompositeKey]) {
-      if (!rowkey.isInstanceOf[CompositeRowKey])
-        throw new IllegalArgumentException("Invalid compound key. The table doesn't have compound key")
-      else {
-        val key = end.asInstanceOf[CompositeKey]
-        val compound = rowkey.asInstanceOf[CompositeRowKey]
-        if (key.keys.size > compound.keys.size)
-          throw new IllegalArgumentException("Too many compound key elements.")
-      }
-    }
-
     val startKey = rowkey(start)
     val endKey = rowkey(end)
     val c = compareByteArray(startKey, endKey)
@@ -95,7 +81,72 @@ trait Scan {
     else
       throw new IllegalStateException("Unsupported Scan table type: " + getClass)
   }
+
+  /** Returns the scan filter based on the query predicts.
+    *
+    * @param query query predict object.
+    * @return scan filter.
+    */
+  private def scanFilter(query: JsObject): CompareExpression = {
+
+    val filters = query.fields.map {
+      case ("$or", condition) =>
+        require(condition.isInstanceOf[JsArray], "$or predict is not an array")
+
+        val filters = condition.asInstanceOf[JsArray].elements.map { e =>
+          require(e.isInstanceOf[JsObject], s"or predict element $e is not an object")
+          scanFilter(e.asInstanceOf[JsObject])
+        }
+
+        require(!filters.isEmpty, "find: empty $or array")
+
+        if (filters.size > 1) Or(filters) else filters(0)
+
+      case ("$and", condition) =>
+        require(condition.isInstanceOf[JsArray], "$and predict is not an array")
+
+        val filters = condition.asInstanceOf[JsArray].elements.map { e =>
+          require(e.isInstanceOf[JsObject], s"and predict element $e is not an object")
+          scanFilter(e.asInstanceOf[JsObject])
+        }
+
+        require(!filters.isEmpty, "find: empty $and array")
+
+        if (filters.size > 1) And(filters) else filters(0)
+
+      case (field, condition) => condition match {
+        case JsObject(fields) => fields.toSeq match {
+          case Seq(("$eq", value)) => CompareOperation(field, Equal, value)
+          case Seq(("$ne", value)) => CompareOperation(field, NotEqual, value)
+          case Seq(("$gt", value)) => CompareOperation(field, Greater, value)
+          case Seq(("$ge", value)) => CompareOperation(field, GreaterOrEqual, value)
+          case Seq(("$gte", value)) => CompareOperation(field, GreaterOrEqual, value)
+          case Seq(("$lt", value)) => CompareOperation(field, Less, value)
+          case Seq(("$le", value)) => CompareOperation(field, LessOrEqual, value)
+          case Seq(("$lte", value)) => CompareOperation(field, LessOrEqual, value)
+        }
+        case _ => CompareOperation(field, Equal, condition)
+      }
+    }.toSeq
+
+    require(!filters.isEmpty, "find: empty filter object")
+
+    if (filters.size > 1) And(filters) else filters(0)
+  }
 }
+
+sealed trait CompareOperator
+case object Equal extends CompareOperator
+case object NotEqual extends CompareOperator
+case object Greater extends CompareOperator
+case object GreaterOrEqual extends CompareOperator
+case object Less extends CompareOperator
+case object LessOrEqual extends CompareOperator
+
+sealed trait CompareExpression
+case class CompareOperation(field: String, op: CompareOperator, value: JsValue) extends CompareExpression
+case class And(expr: Seq[CompareExpression]) extends CompareExpression
+case class Or(expr: Seq[CompareExpression]) extends CompareExpression
 
 /** Row scan iterator */
 trait Scanner extends Traversable[JsValue] {

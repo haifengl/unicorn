@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@ import VertexColor._
   *
   * @author Haifeng Li
   */
+/*
 object GraphOps {
 
-  type Path = List[Edge]
+  type Path = List[EdgeLike]
 
   /** Depth-first search of graph.
     * @param current the current vertex to visit
@@ -191,3 +192,4 @@ object GraphOps {
     }
   }
 }
+*/

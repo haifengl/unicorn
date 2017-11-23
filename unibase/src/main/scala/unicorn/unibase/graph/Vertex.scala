@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package unicorn.unibase.graph
 import scala.language.dynamics
 import unicorn.json._
 
+/*
 /** Graph vertex.
   *
   * @author Haifeng Li
@@ -60,3 +61,4 @@ case class Vertex(val id: Long, val properties: JsObject, val edges: Seq[Edge]) 
 
   def selectDynamic(property: String): JsValue = apply(property)
 }
+*/

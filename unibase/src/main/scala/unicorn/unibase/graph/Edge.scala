@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,20 +17,48 @@
 package unicorn.unibase.graph
 
 import scala.language.dynamics
-import unicorn.json.JsValue
+import unicorn.json.{JsUndefined, JsValue}
+import unicorn.unibase.{Key, CompositeKey}
 
-/** Graph (directed) edge. For an edge 1 - follows -> 3,
-  * "1" and "3" are vertex ids, `follows` is the label of edge.
-  * Vertex 1 is the `out vertex` of edge, and vertex 3 is the `in vertex`.
-  * Besides the label, an edge may have optional data.
+/** Graph vertex template.
   *
   * @author Haifeng Li
   */
-case class Edge(val from: Long, val label: String, val to: Long, val properties: JsValue) extends Dynamic {
+sealed trait VertexLike {
+  /** Returns the row key of this vertex. */
+  def key: Key
+}
 
-  override def toString = s"($from - [$label] -> $to) = ${properties.prettyPrint}"
+/** Graph edge template.
+  *
+  * @tparam V the user type of the vertices of this edge.
+  *
+  * @author Haifeng Li
+  */
+sealed trait EdgeLike[+V <: VertexLike] {
+  /** The end point of this edge. */
+  val from: VertexLike
+  /** The end point of this edge. */
+  val to: VertexLike
+}
 
-  def apply(property: String): JsValue = properties.apply(property)
+/** A graph edge with relationship label.
+  * Besides, the relationship may have optional properties.
+  *
+  * @author Haifeng Li
+  */
+case class Relationship[+V <: VertexLike](override val from: V, override val to: V, val label: String, val properties: JsValue = JsUndefined) extends EdgeLike[V] with Dynamic {
+
+  override def toString = {
+    if (properties != JsUndefined)
+      s"($from - [$label] -> $to) = ${properties.prettyPrint}"
+    else
+      s"($from - [$label] -> $to)"
+  }
+
+  def apply(property: String): JsValue = {
+    properties.apply(property)
+  }
 
   def applyDynamic(property: String): JsValue = apply(property)
 
