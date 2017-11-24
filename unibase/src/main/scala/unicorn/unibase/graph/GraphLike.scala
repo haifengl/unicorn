@@ -19,6 +19,7 @@ package unicorn.unibase.graph
 import com.typesafe.scalalogging.Logger
 import unicorn.bigtable.{BigTable, Column, RowScan}
 import unicorn.json._
+import unicorn.unibase._
 
 /** Graphs are mathematical structures used to model pairwise relations
   * between objects. A graph is made up of vertices (nodes) which are
@@ -57,8 +58,9 @@ import unicorn.json._
   *
   * @author Haifeng Li
   */
-class GraphLike[+V <: VertexLike, +E <: EdgeLike[V]](val table: BigTable with RowScan) {
-  lazy val logger = Logger(getClass)
+trait GraphLike[V <: VertexLike, E <: EdgeLike[V]] {
+  val logger: Logger
+  val table: BigTable with RowScan
   /** Edge property serializer. */
   val serializer = new JsonSerializer()
 
@@ -75,29 +77,34 @@ class GraphLike[+V <: VertexLike, +E <: EdgeLike[V]](val table: BigTable with Ro
   }
   */
 
+  /** Returns the edges of a given vertex. */
+  def apply(vertex: V): Iterator[E] = {
+    table.scanPrefix(RowKey(vertex.key), DocumentColumnFamily).map { row =>
+      val column = row.families(0).columns(0)
+      decode(row.key, column.value)
+    }
+  }
+
+  /** Returns the row key of the edge. */
+  def key(edge: E): Array[Byte]
+
+  /** Returns the value of the edge, which will be put into underlying BigTable.
+    * The default value is JsUndefined.
+    */
+  def value(edge: E): Array[Byte] = {
+    JsonSerializer.undefined
+  }
+
+  /** Decodes the edge from key-value pair. */
+  def decode(key: Array[Byte], value: Array[Byte]): E
+
   /** Adds an edge. If the edge exists, the associated data will be overwritten. */
   def add(edge: E): Unit = {
-    /*
-    val fromKey = serializer.serialize(from)
-    val toKey = serializer.serialize(to)
-
-    val columnPrefix = serializer.edgeSerializer.str2Bytes(label)
-    val value = serializer.serializeEdge(properties)
-
-    table.put(fromKey, GraphOutEdgeColumnFamily, Column(serializer.serializeEdgeColumnQualifier(columnPrefix, to), value))
-    table.put(toKey, GraphInEdgeColumnFamily, Column(serializer.serializeEdgeColumnQualifier(columnPrefix, from), value))
-    */
+    table(key(edge), DocumentColumnFamily, DocumentColumn) = value(edge)
   }
 
   /** Deletes an edge. */
   def delete(edge: E): Unit = {
-    /*
-    val fromKey = serializer.serialize(from)
-    val toKey = serializer.serialize(to)
-    val columnPrefix = serializer.edgeSerializer.str2Bytes(label)
-
-    table.delete(fromKey, GraphOutEdgeColumnFamily, serializer.serializeEdgeColumnQualifier(columnPrefix, to))
-    table.delete(toKey, GraphInEdgeColumnFamily, serializer.serializeEdgeColumnQualifier(columnPrefix, from))
-    */
+    table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
   }
 }

@@ -18,16 +18,6 @@ package unicorn.unibase.graph
 
 import scala.language.dynamics
 import unicorn.json.{JsUndefined, JsValue}
-import unicorn.unibase.{Key, CompositeKey}
-
-/** Graph vertex template.
-  *
-  * @author Haifeng Li
-  */
-sealed trait VertexLike {
-  /** Returns the row key of this vertex. */
-  def key: Key
-}
 
 /** Graph edge template.
   *
@@ -35,19 +25,21 @@ sealed trait VertexLike {
   *
   * @author Haifeng Li
   */
-sealed trait EdgeLike[+V <: VertexLike] {
+trait EdgeLike[V <: VertexLike] {
   /** The end point of this edge. */
   val from: VertexLike
   /** The end point of this edge. */
   val to: VertexLike
 }
 
+case class Edge[V <: VertexLike](val from: V, val to: V) extends EdgeLike[V]
+
 /** A graph edge with relationship label.
   * Besides, the relationship may have optional properties.
   *
   * @author Haifeng Li
   */
-case class Relationship[+V <: VertexLike](override val from: V, override val to: V, val label: String, val properties: JsValue = JsUndefined) extends EdgeLike[V] with Dynamic {
+case class Relationship[V <: VertexLike](override val from: V, override val to: V, val label: String, val properties: JsValue = JsUndefined) extends EdgeLike[V] with Dynamic {
 
   override def toString = {
     if (properties != JsUndefined)

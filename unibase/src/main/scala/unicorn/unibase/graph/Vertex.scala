@@ -17,7 +17,56 @@
 package unicorn.unibase.graph
 
 import scala.language.dynamics
-import unicorn.json._
+import unicorn.json.JsObject
+import unicorn.unibase.{Key, LongKey, StringKey}
+
+/** Graph vertex template.
+  *
+  * @author Haifeng Li
+  */
+trait VertexLike {
+  /** Returns the row key of this vertex. */
+  def key: Key
+}
+
+/** An abstract vertex has only a 64-bit ID.
+  *
+  * @param id 64-bit ID
+  */
+case class AbstractVertex(id: Long) extends VertexLike {
+  override def key: Key = LongKey(id)
+}
+
+/** A trivial vertex has a 64-bit ID and a label.
+  *
+  * @param id 64-bit ID
+  * @param label the label/type of vertex.
+  */
+case class TrivialVertex(id: Long, label: String) extends VertexLike {
+  override def key: Key = LongKey(id)
+}
+
+/** A vertex with any number of attributes .
+  *
+  * @param id 64-bit ID
+  * @param label the label/type of vertex.
+  * @param properties any number of attributes (key-value-pairs).
+  */
+case class PropertyVertex(id: Long, label: String, properties: JsObject) extends VertexLike {
+  override def key: Key = LongKey(id)
+}
+
+/** A vertex which is a document. The documents from multiple tables may
+  * be connected to each other in a graph.
+  *
+  * @param id 64-bit ID
+  * @param table the table of document
+  * @param rowkey the row key of document
+  */
+case class DocumentVertex(id: Long, table: String, rowkey: Array[Byte]) extends VertexLike {
+  override def key: Key = LongKey(id)
+}
+
 
 /*
 /** Graph vertex.

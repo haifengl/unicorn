@@ -23,9 +23,7 @@ import unicorn.json._
   *
   * @author Haifeng Li
   */
-trait FindOps {
-  val table: BigTable with RowScan
-  val rowkey: RowKey
+trait FindOps extends ScanOps {
   val index: Seq[Index]
 
   /** Searches the table.
@@ -45,43 +43,6 @@ trait FindOps {
 
   }
   */
-
-  /** Scan the whole table. */
-  private def scan(fields: Seq[String]): Scanner = {
-    scanner(table.scan(DocumentColumnFamily, fields))
-  }
-
-  /** Scan the the rows whose key starts with the given prefix. */
-  def scan(prefix: Key, fields: String*): Scanner = {
-    scanner(table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields))
-  }
-
-  /** Scan the the rows in the given range.
-    * @param start row to start scanner at or after (inclusive)
-    * @param end row to stop scanner before (exclusive)
-    */
-  def scan(start: Key, end: Key, fields: String*): Scanner = {
-    val startKey = rowkey(start)
-    val endKey = rowkey(end)
-    val c = compareByteArray(startKey, endKey)
-    if (c == 0)
-      throw new IllegalArgumentException("Start and end keys are the same")
-
-    if (c < 0)
-      scanner(table.scan(startKey, endKey, DocumentColumnFamily, fields))
-    else
-      scanner(table.scan(endKey, startKey, DocumentColumnFamily, fields))
-  }
-
-  private def scanner(rows: RowScanner): Scanner = {
-    if (this.isInstanceOf[Drawer])
-      new DrawerScanner(rows)
-    else if (this.isInstanceOf[Table])
-      new TableScanner(rows)
-    else
-      throw new IllegalStateException("Unsupported Scan table type: " + getClass)
-  }
-
   /** Returns the scan filter based on the query predicts.
     *
     * @param query query predict object.
@@ -147,41 +108,3 @@ sealed trait CompareExpression
 case class CompareOperation(field: String, op: CompareOperator, value: JsValue) extends CompareExpression
 case class And(expr: Seq[CompareExpression]) extends CompareExpression
 case class Or(expr: Seq[CompareExpression]) extends CompareExpression
-
-/** Row scan iterator */
-trait Scanner extends Traversable[JsValue] {
-  val rows: RowScanner
-
-  def foreach[U](f: JsValue => U): Unit = {
-    while (rows.hasNext) {
-      val columns = rows.next.families(0).columns
-      val doc = deserialize(columns)
-      f(doc)
-    }
-  }
-
-  def close: Unit = rows.close
-
-  def deserialize(columns: Seq[Column]): JsObject
-}
-
-private class DrawerScanner(val rows: RowScanner) extends Scanner {
-  val serializer = new JsonSerializer()
-
-  override def deserialize(columns: Seq[Column]): JsValue = {
-    serializer.deserialize(columns(0).value)
-  }
-}
-
-
-private class TableScanner(val rows: RowScanner) extends Scanner {
-  val serializer = new JsonSerializer()
-
-  override def deserialize(columns: Seq[Column]): JsValue = {
-    val doc = JsObject()
-    columns.foreach { case Column(qualifier, value, _) =>
-      doc(qualifier) = serializer.deserialize(value)
-    }
-    doc
-  }
-}
