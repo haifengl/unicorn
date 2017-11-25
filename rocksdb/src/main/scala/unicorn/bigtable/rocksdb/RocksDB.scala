@@ -16,7 +16,9 @@
 
 package unicorn.bigtable.rocksdb
 
-import java.io.File
+import java.io.{File, IOException}
+import java.nio.file.{Files, Path, Paths, SimpleFileVisitor, FileVisitResult}
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Properties
 import org.rocksdb.{ColumnFamilyDescriptor, Options}
 import unicorn.bigtable.Database
@@ -61,7 +63,21 @@ class RocksDB(val path: String) extends Database[RocksTable] {
   }
   
   override def dropTable(name: String): Unit = {
-    new File(s"$path/$name").delete
+    delete(Paths.get(path, name))
+  }
+
+  /** Delete directory recursively. */
+  private def delete(root: Path): Unit = {
+    Files.walkFileTree(root, new SimpleFileVisitor[Path] {
+      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        Files.delete(file)
+        FileVisitResult.CONTINUE
+      }
+      override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+        Files.delete(dir)
+        FileVisitResult.CONTINUE
+      }
+    })
   }
 
   override def truncateTable(name: String): Unit = {

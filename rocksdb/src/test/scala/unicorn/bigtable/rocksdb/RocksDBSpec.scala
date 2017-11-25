@@ -37,6 +37,7 @@ class RocksDBSpec extends Specification with BeforeAfterAll {
 
   override def afterAll = {
     if (table != null) table.close
+    db.dropTable("unicorn_test")
     new java.io.File("/tmp/unicorn-rocksdb").delete
   }
 
