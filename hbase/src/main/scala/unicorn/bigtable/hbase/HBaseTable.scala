@@ -31,7 +31,7 @@ import unicorn.bigtable._, ScanFilter._
   *
   * @author Haifeng Li
   */
-class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterScan with IntraRowScan with TimeTravel with CheckAndPut with CellLevelSecurity with Appendable with Rollback with Counter {
+class HBaseTable(val db: HBase, val name: String) extends OrderedBigTableWithFilter with IntraRowScan with TimeTravel with CheckAndPut with CellLevelSecurity with Appendable with Rollback with Counter {
 
   val table = db.connection.getTable(TableName.valueOf(name))
 
@@ -312,10 +312,11 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
   }
 
   override def deleteBatch(rows: Seq[Array[Byte]]): Unit = {
-    val deletes = rows.map(newDelete(_))
     // HTable modifies the input parameter deletes.
     // Make sure we pass in a mutable collection.
-    table.delete(deletes.asJava)
+    val deletes = new java.util.ArrayList[Delete]()
+    rows.foreach { row => deletes.add(newDelete(row)) }
+    table.delete(deletes)
   }
 
   override def rollback(row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Unit = {
@@ -447,10 +448,10 @@ class HBaseTable(val db: HBase, val name: String) extends BigTable with FilterSc
 
 object HBaseTable {
   def getRow(result: Result): Row = {
-    val valueMap = result.getMap.asScala
+    val valueMap = result.getMap
     if (valueMap == null) return Row(result.getRow, Seq.empty)
 
-    val families = valueMap.map { case (family, columns) =>
+    val families = valueMap.asScala.map { case (family, columns) =>
       val values = columns.asScala.flatMap { case (column, ver) =>
         ver.asScala.map { case (timestamp, value) =>
           Column(column, value, timestamp)

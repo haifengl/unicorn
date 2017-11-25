@@ -199,7 +199,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
       val prefix = "row"
       import ScanFilter.CompareOperator._
       val filter = ScanFilter.BasicExpression(Equal, "cf1", "c1", "21")
-      val scanner = table.scan(filter, prefix)
+      val scanner = table.scanPrefix(filter, prefix)
       val r1 = scanner.next
       new String(r1.key, UTF8) === "row2"
       scanner.hasNext === false
@@ -229,7 +229,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
         ScanFilter.BasicExpression(Greater, "cf1", "c1", "11"),
         ScanFilter.BasicExpression(Greater, "cf1", "c2", "22"))
       )
-      val scanner = table.scan(filter, prefix)
+      val scanner = table.scanPrefix(filter, prefix)
       val r1 = scanner.next
       new String(r1.key, UTF8) === "row3"
       scanner.hasNext === false
@@ -259,7 +259,7 @@ class HBaseSpec extends Specification with BeforeAfterAll {
         ScanFilter.BasicExpression(Less, "cf1", "c1", "21"),
         ScanFilter.BasicExpression(GreaterOrEqual, "cf1", "c1", "31"))
       )
-      val scanner = table.scan(filter, prefix)
+      val scanner = table.scanPrefix(filter, prefix)
       val r1 = scanner.next
       new String(r1.key, UTF8) === "row1"
       val r3 = scanner.next

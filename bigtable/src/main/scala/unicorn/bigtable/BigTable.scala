@@ -130,42 +130,13 @@ trait BigTable extends AutoCloseable {
   def deleteBatch(rows: Seq[Array[Byte]]): Unit
 }
 
-/** Get a row at a given time point. */
-trait TimeTravel {
-  /** Get a column family. */
-  def getAsOf(asOfDate: Date, row: Array[Byte], family: String): Seq[Column] = {
-    getAsOfDate(asOfDate, row, family, Seq.empty)
-  }
-
-  /** Get one or more columns of a column family. If columns is empty, get all columns in the column family. */
-  def getAsOfDate(asOfDate: Date, row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Seq[Column]
-
-  /** Get all columns in one or more column families. If families is empty, get all column families. */
-  def getAsOfDate(asOfDate: Date, row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])] = Seq.empty): Seq[ColumnFamily]
-
-}
-
-/** Check and put. Put a row only if the given column doesn't exist. */
-trait CheckAndPut {
-  /** Insert values. Returns true if the new put was executed, false otherwise. */
-  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], family: String, column: Column): Boolean = {
-    checkAndPut(row, checkFamily, checkColumn, family, Seq(column))
-  }
-
-  /** Insert values. Returns true if the new put was executed, false otherwise. */
-  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], family: String, columns: Seq[Column]): Boolean
-
-  /** Insert values. Returns true if the new put was executed, false otherwise. */
-  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], families: Seq[ColumnFamily]): Boolean
-}
-
 /** Row scan iterator */
 trait RowScanner extends Iterator[Row] with AutoCloseable {
   def close: Unit
 }
 
-/** If BigTable supports row scan. */
-trait RowScan {
+/** If the key is ordered in the table, we can scan a range of keys. */
+trait OrderedBigTable extends BigTable {
   /** Start row in a table. */
   val TableStartRow: Array[Byte]
   /** End row in a table. */
@@ -183,7 +154,7 @@ trait RowScan {
     * @param prefix the row key prefix.
     * @return the closest next row key immediately following the given prefix.
     */
-  def prefixEndRow(prefix: Array[Byte]): Array[Byte] = {
+  private[bigtable] def prefixEndRow(prefix: Array[Byte]): Array[Byte] = {
     val ff : Byte = 0xFF.toByte
     val one: Byte = 1
 
@@ -279,20 +250,6 @@ trait RowScan {
   }
 }
 
-/** Intra-row scan iterator */
-trait IntraRowScanner extends Iterator[Column] with AutoCloseable {
-  def close: Unit
-}
-
-/** If BigTable supports intra-row scan. */
-trait IntraRowScan {
-  /** Scan a column range for a given row.
-    * @param startColumn column to start scanner at or after (inclusive)
-    * @param stopColumn column to stop scanner before or at (inclusive)
-    */
-  def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): IntraRowScanner
-}
-
 object ScanFilter {
   object CompareOperator extends Enumeration {
     type CompareOperator = Value
@@ -307,8 +264,9 @@ object ScanFilter {
   case class BasicExpression(op: CompareOperator, family: String, column: Array[Byte], value: Array[Byte], filterIfMissing: Boolean = true) extends Expression
 }
 
-/** If BigTable supports filter. */
-trait FilterScan extends RowScan {
+/** If BigTable supports server side filter, we can reduce network I/O although not
+  * server-side disk I/O. */
+trait OrderedBigTableWithFilter extends OrderedBigTable {
   /** Scan a column family.
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
@@ -390,26 +348,68 @@ trait FilterScan extends RowScan {
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: Array[Byte], family: String): RowScanner = {
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], family: String): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: Array[Byte]): RowScanner = {
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte]): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix))
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scan(filter: ScanFilter.Expression, prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
     scan(filter, prefix, prefixEndRow(prefix), families)
   }
 }
 
+/** Get a row at a given time point. */
+trait TimeTravel {
+  /** Get a column family. */
+  def getAsOf(asOfDate: Date, row: Array[Byte], family: String): Seq[Column] = {
+    getAsOfDate(asOfDate, row, family, Seq.empty)
+  }
+
+  /** Get one or more columns of a column family. If columns is empty, get all columns in the column family. */
+  def getAsOfDate(asOfDate: Date, row: Array[Byte], family: String, columns: Seq[Array[Byte]]): Seq[Column]
+
+  /** Get all columns in one or more column families. If families is empty, get all column families. */
+  def getAsOfDate(asOfDate: Date, row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])] = Seq.empty): Seq[ColumnFamily]
+
+}
+
+/** Check and put. Put a row only if the given column doesn't exist. */
+trait CheckAndPut {
+  /** Insert values. Returns true if the new put was executed, false otherwise. */
+  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], family: String, column: Column): Boolean = {
+    checkAndPut(row, checkFamily, checkColumn, family, Seq(column))
+  }
+
+  /** Insert values. Returns true if the new put was executed, false otherwise. */
+  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], family: String, columns: Seq[Column]): Boolean
+
+  /** Insert values. Returns true if the new put was executed, false otherwise. */
+  def checkAndPut(row: Array[Byte], checkFamily: String, checkColumn: Array[Byte], families: Seq[ColumnFamily]): Boolean
+}
+
+/** Intra-row scan iterator */
+trait IntraRowScanner extends Iterator[Column] with AutoCloseable {
+  def close: Unit
+}
+
+/** If BigTable supports intra-row scan. */
+trait IntraRowScan {
+  /** Scan a column range for a given row.
+    * @param startColumn column to start scanner at or after (inclusive)
+    * @param stopColumn column to stop scanner before or at (inclusive)
+    */
+  def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): IntraRowScanner
+}
 
 /** If BigTable supports cell level security. */
 trait CellLevelSecurity {

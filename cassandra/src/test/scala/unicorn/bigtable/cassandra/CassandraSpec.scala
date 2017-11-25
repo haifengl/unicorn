@@ -82,22 +82,20 @@ class CassandraSpec extends Specification with BeforeAfterAll {
       )
       val families = table.get("row1")
       families.size === 2
-      families(0).columns.size === 1
-      families(1).columns.size === 2
-      new String(families(0).family, UTF8) === "cf2"
-      new String(families(1).family, UTF8) === "cf1"
+      val cf1 = families.filter(_.family == "cf1")(0)
+      val cf2 = families.filter(_.family == "cf2")(0)
+      cf1.columns.size === 2
+      cf2.columns.size === 1
 
-      new String(families(0).columns(0).value, UTF8) === "v3"
-      new String(families(1).columns(0).value, UTF8) === "v1"
-      new String(families(1).columns(1).value, UTF8) === "v2"
+      new String(cf1.columns(0).value, UTF8) === "v1"
+      new String(cf1.columns(1).value, UTF8) === "v2"
+      new String(cf2.columns(0).value, UTF8) === "v3"
 
       table.delete("row1", "cf1")
-      val cf1 = table.get("row1", "cf1")
-      cf1.size === 0
+      table.get("row1", "cf1").size === 0
 
       table.get("row1").size === 1
-      val cf2 = table.get("row1", "cf2")
-      cf2.size === 1
+      table.get("row1", "cf2").size === 1
 
       table.delete("row1")
       table.get("row1").size === 0

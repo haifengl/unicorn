@@ -57,8 +57,8 @@ class HBase(config: Configuration) extends Database[HBaseTable] {
     families.foreach { family =>
       val desc = new HColumnDescriptor(family)
       desc.setDataBlockEncoding(DataBlockEncoding.FAST_DIFF)
-      desc.setCompressionType(Compression.Algorithm.SNAPPY)
-      desc.setCompactionCompressionType(Compression.Algorithm.SNAPPY)
+      //desc.setCompressionType(Compression.Algorithm.SNAPPY)
+      //desc.setCompactionCompressionType(Compression.Algorithm.SNAPPY)
       propNames.foreach { p => desc.setConfiguration(p, props.getProperty(p))}
       tableDesc.addFamily(desc)
     }
