@@ -60,7 +60,7 @@ import VertexColor._
   *
   * @author Haifeng Li
   */
-trait Traveler[V <: VertexLike, E <: EdgeLike[V]] {
+trait Traveler[T, V <: VertexId[T], E <: EdgeLike[T, V]] {
   /*
   /** Translates a vertex string key to 64 bit id. */
   def idOf(key: String): Option[Long]
@@ -92,13 +92,10 @@ trait Traveler[V <: VertexLike, E <: EdgeLike[V]] {
 
   /** The weight of edge (e.g. shortest path search). */
   def weight(edge: E): Double
-}
 
-/** Traveler for A* searcher. */
-trait AstarTraveler[V <: VertexLike, E <: EdgeLike[V]] extends Traveler[V, E] {
-  /** The future path-cost function, which is an admissible
+  /** The future path-cost function in A* search, which is an admissible
     * "heuristic estimate" of the distance from the current vertex to the goal.
     * Note that the heuristic function must be monotonic.
     */
-  def h(edge: E): Double
+  def h(edge: E): Double = 1.0
 }

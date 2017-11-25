@@ -16,23 +16,20 @@
 
 package unicorn.unibase.graph
 
-import scala.language.dynamics
-import unicorn.json.{JsUndefined, JsValue}
-
 /** Graph edge template.
   *
   * @tparam V the user type of the vertices of this edge.
   *
   * @author Haifeng Li
   */
-trait EdgeLike[V <: VertexLike] {
+trait EdgeLike[T, V <: VertexId[T]] {
   /** The end point of this edge. */
-  val from: VertexLike
+  val from: V
   /** The end point of this edge. */
-  val to: VertexLike
+  val to: V
 }
-
-case class Edge[V <: VertexLike](val from: V, val to: V) extends EdgeLike[V]
+/*
+case class Edge[T, V <: VertexId[T]](val from: V, val to: V) extends EdgeLike[T, V]
 
 /** A graph edge with relationship label.
   * Besides, the relationship may have optional properties.
@@ -56,3 +53,4 @@ case class Relationship[V <: VertexLike](override val from: V, override val to: 
 
   def selectDynamic(property: String): JsValue = apply(property)
 }
+*/

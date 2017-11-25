@@ -39,8 +39,8 @@ import unicorn.unibase._
   */
 
 /** Entity vertex in knowledge/semantic graph. */
-case class Entity(entity: String) extends VertexLike {
-  override def key: Key = StringKey(entity)
+case class Entity(id: String) extends VertexId[String] {
+  override def key: Key = StringKey(id)
 }
 
 /** A semantic triple, or simply triple, is the atomic data entity in the
@@ -52,7 +52,7 @@ case class Entity(entity: String) extends VertexLike {
   * From this basic structure, triples can be composed into more complex
   * models, by using triples as objects or subjects of other triples.
   */
-case class Triple(from: Entity, predicate: String, to: Entity) extends EdgeLike[Entity] {
+case class Triple(from: Entity, predicate: String, to: Entity) extends EdgeLike[String, Entity] {
   def subject = from
   def `object` = to
 }
@@ -63,12 +63,12 @@ object Triple {
   }
 }
 
-class SemanticGraph(val table: BigTable with RowScan) extends GraphLike[Entity, Triple] {
+class SemanticGraph(val table: BigTable with RowScan) extends GraphLike[String, Entity, Triple] {
   override def key(edge: Triple): Array[Byte] = {
     val range = new SimplePositionedMutableByteRange(1024)
-    OrderedBytes.encodeString(range, edge.subject.entity, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.subject.id, Order.ASCENDING)
     OrderedBytes.encodeString(range, edge.predicate, Order.ASCENDING)
-    OrderedBytes.encodeString(range, edge.`object`.entity, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.`object`.id, Order.ASCENDING)
     range.getBytes.slice(0, range.getPosition)
   }
 

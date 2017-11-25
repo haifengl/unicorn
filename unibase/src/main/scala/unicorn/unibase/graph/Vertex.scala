@@ -16,24 +16,31 @@
 
 package unicorn.unibase.graph
 
-import scala.language.dynamics
-import unicorn.json.JsObject
-import unicorn.unibase.{Key, LongKey, StringKey}
+import unicorn.unibase.Key
+
+/** Graph vertex ID.
+  *
+  * @author Haifeng Li
+  */
+trait VertexId[T] {
+  /** Vertex ID. */
+  val id: T
+  /** Returns the row key of this vertex. */
+  def key: Key
+}
 
 /** Graph vertex template.
   *
   * @author Haifeng Li
   */
-trait VertexLike {
-  /** Returns the row key of this vertex. */
-  def key: Key
-}
+trait VertexLike[T] extends VertexId[T]
 
+/*
 /** An abstract vertex has only a 64-bit ID.
   *
   * @param id 64-bit ID
   */
-case class AbstractVertex(id: Long) extends VertexLike {
+case class AbstractVertex(id: Long) extends VertexId[Long] {
   override def key: Key = LongKey(id)
 }
 
@@ -42,7 +49,7 @@ case class AbstractVertex(id: Long) extends VertexLike {
   * @param id 64-bit ID
   * @param label the label/type of vertex.
   */
-case class TrivialVertex(id: Long, label: String) extends VertexLike {
+case class TrivialVertex(id: Long, label: String) extends VertexId[Long] {
   override def key: Key = LongKey(id)
 }
 
@@ -52,7 +59,7 @@ case class TrivialVertex(id: Long, label: String) extends VertexLike {
   * @param label the label/type of vertex.
   * @param properties any number of attributes (key-value-pairs).
   */
-case class PropertyVertex(id: Long, label: String, properties: JsObject) extends VertexLike {
+case class PropertyVertex(id: Long, label: String, properties: JsObject) extends VertexId[Long] {
   override def key: Key = LongKey(id)
 }
 
@@ -63,12 +70,10 @@ case class PropertyVertex(id: Long, label: String, properties: JsObject) extends
   * @param table the table of document
   * @param rowkey the row key of document
   */
-case class DocumentVertex(id: Long, table: String, rowkey: Array[Byte]) extends VertexLike {
+case class DocumentVertex(id: Long, table: String, rowkey: Array[Byte]) extends VertexId[Long] {
   override def key: Key = LongKey(id)
 }
 
-
-/*
 /** Graph vertex.
   *
   * @author Haifeng Li

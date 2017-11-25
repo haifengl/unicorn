@@ -23,7 +23,7 @@ import unicorn.json.{JsArray, JsObject, JsValue}
   *
   * @author Haifeng Li
   */
-class Gremlin[V <: VertexLike, E <: EdgeLike[V]](val traveler: Traveler[V, E]) {
+class Gremlin[T, V <: VertexId[T], E <: EdgeLike[T, V]](val traveler: Traveler[T, V, E]) {
   /*
   def v(id: Long): GremlinVertices = new GremlinVertices(traveler, Seq(id))
   def v(id: Array[Long]): GremlinVertices = new GremlinVertices(traveler, id)
@@ -38,7 +38,7 @@ class Gremlin[V <: VertexLike, E <: EdgeLike[V]](val traveler: Traveler[V, E]) {
   */
 }
 
-class GremlinVertices[V <: VertexLike, E <: EdgeLike[V]](val traveler: Traveler[V, E], val vertices: Iterable[V]) extends Dynamic {
+class GremlinVertices[T, V <: VertexId[T], E <: EdgeLike[T, V]](val traveler: Traveler[T, V, E], val vertices: Iterable[V]) extends Dynamic {
 /*
   override def toString: String = {
     val properties = vertices.map(traveler.vertex(_).properties)

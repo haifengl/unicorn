@@ -32,7 +32,7 @@ import Direction._
   *
   * @author Haifeng Li
   */
-class SimpleTraveler[V <: VertexLike, E <: EdgeLike[V]](val graph: GraphLike[V, E], val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler[V, E] {
+class SimpleTraveler[T, V <: VertexId[T], E <: EdgeLike[T, V]](val graph: GraphLike[T, V, E], val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler[T, V, E] {
   /** The color mark if a vertex was already visited. */
   private val mark = collection.mutable.Map[V, VertexColor]().withDefaultValue(White)
 
