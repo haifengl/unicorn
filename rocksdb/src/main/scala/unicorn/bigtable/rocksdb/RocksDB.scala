@@ -14,14 +14,14 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn.bigtable.rocksdb
+package unicorn.kv.rocksdb
 
 import java.io.{File, IOException}
 import java.nio.file.{Files, Path, Paths, SimpleFileVisitor, FileVisitResult}
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.Properties
-import org.rocksdb.{ColumnFamilyDescriptor, Options}
-import unicorn.bigtable.Database
+import org.rocksdb.Options
+import unicorn.kv.KeyValueStore
 
 /** RocksDB abstraction. RocksDB is an embeddable persistent key-value store
   * for fast storage. There is no concept of tables in RocksDB. In fact, a
@@ -31,38 +31,30 @@ import unicorn.bigtable.Database
   *
   * @author Haifeng Li
   */
-class RocksDB(val path: String) extends Database[RocksTable] {
+class RocksDB(val path: String) extends KeyValueStore {
   val dir = new File(path)
   require(dir.exists, s"Directory $path doesn't exist")
 
-  override def close: Unit = ()
+  override def close: Unit = {
 
-  override def apply(name: String): RocksTable = {
-    new RocksTable(s"$path/$name")
   }
 
-  override def tables: Set[String] = {
-    dir.listFiles.filter(_.isDirectory).map(_.getName).toSet
+  override def apply(name: String): Rockspace = {
+    new Rockspace(s"$path/$name")
   }
 
   /** The parameter props is ignored. */
-  override def createTable(name: String, props: Properties, families: String*): RocksTable = {
+  override def create(name: String, props: Properties): Unit = {
     val options = new Options
     options.setCreateIfMissing(true)
     options.setErrorIfExists(true)
     options.setCreateMissingColumnFamilies(false)
 
     val rocksdb = org.rocksdb.RocksDB.open(options, s"$path/$name")
-    families.foreach { family =>
-      val descriptor = new ColumnFamilyDescriptor(family.getBytes)
-      rocksdb.createColumnFamily(descriptor)
-    }
-
     rocksdb.close
-    new RocksTable(s"$path/$name")
   }
   
-  override def dropTable(name: String): Unit = {
+  override def drop(name: String): Unit = {
     delete(Paths.get(path, name))
   }
 
@@ -80,26 +72,15 @@ class RocksDB(val path: String) extends Database[RocksTable] {
     })
   }
 
-  override def truncateTable(name: String): Unit = {
-    throw new UnsupportedOperationException("RocksDB doesn't support truncateTable")
-  }
-
-  override def tableExists(name: String): Boolean = {
-    val options = new Options().setCreateIfMissing(false)
-    try {
-      org.rocksdb.RocksDB.open(options, s"$path/$name")
-      true
-    } catch {
-      case _: Exception => false
-    }
-  }
-
-  override def compactTable(name: String): Unit = {
+  def compact(name: String): Unit = {
     org.rocksdb.RocksDB.open(s"$path/$name").compactRange
   }
 }
 
 object RocksDB {
+
+  // loads the RocksDB C++ library.
+  org.rocksdb.RocksDB.loadLibrary()
 
   /** Creates a RocksDB database.
     *
