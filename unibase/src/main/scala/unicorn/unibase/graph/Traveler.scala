@@ -19,37 +19,32 @@ package unicorn.unibase.graph
 import unicorn.json._
 
 /** Vertex color mark in a graph graversal. */
-object VertexColor extends Enumeration {
-  type VertexColor = Value
+sealed trait VertexColor
 
-  /** White marks vertices that have yet to be discovered. */
-  val White = Value
+/** White marks vertices that have yet to be discovered. */
+case object White extends VertexColor
 
-  /** Gray marks a vertex that is discovered but still
-    * has vertices adjacent to it that are undiscovered. */
-  val Gray = Value
+/** Gray marks a vertex that is discovered but still
+  * has vertices adjacent to it that are undiscovered. */
+case object Gray extends VertexColor
 
-  /** A black vertex is discovered vertex that is not
-    * adjacent to any white vertices.
-    */
-  val Black = Value
-}
+/** A black vertex is discovered vertex that is not
+  * adjacent to any white vertices.
+  */
+case object Black extends VertexColor
+
 
 /** The edges to follow in a graph traversal. */
-object Direction extends Enumeration {
-  type Direction = Value
+sealed trait Direction
 
-  /** Outgoing edges. */
-  val Outgoing = Value
+/** Outgoing edges. */
+case object Outgoing extends Direction
 
-  /** Incoming edges. */
-  val Incoming = Value
+/** Incoming edges. */
+case object Incoming extends Direction
 
-  /** Both directions. */
-  val Both = Value
-}
-
-import VertexColor._
+/** Both directions. */
+case object Both extends Direction
 
 /** Graph traveler is a proxy to the graph during the
   * graph traversal. Beyond the visitor design pattern
@@ -60,19 +55,12 @@ import VertexColor._
   *
   * @author Haifeng Li
   */
-trait Traveler[T, V <: VertexId[T], E <: EdgeLike[T, V]] {
-  /*
-  /** Translates a vertex string key to 64 bit id. */
-  def idOf(key: String): Option[Long]
-
+trait Traveler[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]] {
   /** Returns the vertex of given ID. */
-  def vertex(id: Long): Vertex
+  def apply(vertex: VI): V
 
-  /** Returns the vertex of given string key. */
-  def vertex(key: String): Vertex
-*/
   /** The color mark if a vertex was already visited. */
-  def color(vertex: V): VertexColor
+  def color(vertex: VI): VertexColor
 
   /** Visit a vertex during graph traversal.
     *
@@ -80,7 +68,7 @@ trait Traveler[T, V <: VertexId[T], E <: EdgeLike[T, V]] {
     * @param edge the incoming arc (None for starting vertex).
     * @param hops the number of hops from the starting vertex to this vertex.
     */
-  def visit(vertex: V, edge: Option[E], hops: Int): Unit
+  def visit(vertex: VI, edge: Option[E], hops: Int): Unit
 
   /** Returns an iterator of the neighbors and associated edges of a vertex.
     *
@@ -88,7 +76,7 @@ trait Traveler[T, V <: VertexId[T], E <: EdgeLike[T, V]] {
     * @param hops the number of hops from starting vertex, which may be used for early termination.
     * @return an iterator of the outgoing edges
     */
-  def neighbors(vertex: V, hops: Int): Iterator[E]
+  def neighbors(vertex: VI, hops: Int): Iterator[E]
 
   /** The weight of edge (e.g. shortest path search). */
   def weight(edge: E): Double

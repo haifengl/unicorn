@@ -41,7 +41,7 @@ import unicorn.unibase._
   */
 
 /** Entity vertex in knowledge/semantic graph. */
-case class Entity(id: String) extends VertexId[String] {
+case class Entity(id: String) extends VertexLike[String] {
   override def key: Key = StringKey(id)
 }
 

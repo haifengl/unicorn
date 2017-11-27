@@ -16,8 +16,6 @@
 
 package unicorn.unibase.graph
 
-import VertexColor._
-
 /** Advanced graph operations.
   *
   * @author Haifeng Li

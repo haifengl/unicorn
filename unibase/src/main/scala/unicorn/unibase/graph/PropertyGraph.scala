@@ -18,7 +18,7 @@ package unicorn.unibase.graph
 
 import scala.language.dynamics
 import org.apache.hadoop.hbase.util.{Order, OrderedBytes, SimplePositionedMutableByteRange}
-import unicorn.bigtable.{BigTable, RowScan}
+import unicorn.bigtable.OrderedBigTable
 import unicorn.json._
 import unicorn.unibase._
 
@@ -44,7 +44,12 @@ import unicorn.unibase._
   */
 
 /** Node/entity in property graph. */
-case class Node(id: ObjectId, label: String, properties: JsObject) extends VertexId[ObjectId] {
+case class NodeId(id: ObjectId) extends VertexId[ObjectId] {
+  override def key: Key = ObjectIdKey(id)
+}
+
+/** Node/entity in property graph. */
+case class Node(id: ObjectId, label: String, properties: JsObject) extends VertexLike[ObjectId] {
   override def key: Key = ObjectIdKey(id)
 }
 
@@ -80,16 +85,69 @@ case class Relationship(override val from: Node, override val to: Node, val labe
   def selectDynamic(property: String): JsValue = apply(property)
 }
 
-class PropertyGraph(val table: BigTable with RowScan) extends GraphLike[ObjectId, Node, Relationship] {
-  override def key(edge: Relationship): Array[Byte] = {
+class PropertyGraph(val table: OrderedBigTable) extends GraphLike[ObjectId, NodeId, Node, Relationship] {
+  override def apply(vertex: ObjectId): Option[Node] = {
+    if (edges(vertex).isEmpty) None else Some(Entity(vertex))
+  }
+
+  override def apply(vertex: NodeId): Option[Node] = {
+    if (edges(vertex).isEmpty) None else Some(vertex)
+  }
+
+  override def edges(vertex: ObjectId): Iterator[Relationship] = {
+    edges(StringKey(vertex))
+  }
+
+  override def edges(vertex: NodeId): Iterator[Relationship] = {
+    edges(vertex.key)
+  }
+
+  override def edges(vertex: ObjectId, `type`: String): Iterator[Relationship] = {
+    val prefix = CompositeKey(StringKey(vertex), StringKey(`type`))
+    edges(prefix)
+  }
+
+  override def edges(vertex: NodeId, `type`: String): Iterator[Relationship] = {
+    val prefix = CompositeKey(StringKey(vertex.id), StringKey(`type`))
+    edges(prefix)
+  }
+
+  private def edges(prefix: Key): Iterator[Relationship] = {
+    table.scanPrefix(RowKey(prefix), DocumentColumnFamily).map { row =>
+      val column = row.families(0).columns(0)
+      decode(row.key, column.value)
+    }
+  }
+
+  def add(node: Node): Unit = {
+    table(key(edge), DocumentColumnFamily, DocumentColumn) = JsonSerializer.undefined
+  }
+
+  def delete(node: ObjectId): Unit = {
+    delete(NodeId(node))
+  }
+
+  def delete(node: NodeId): Unit = {
+    table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
+  }
+
+  override def add(edge: Relationship): Unit = {
+    table(key(edge), DocumentColumnFamily, DocumentColumn) = JsonSerializer.undefined
+  }
+
+  override def delete(edge: Relationship): Unit = {
+    table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
+  }
+
+  private def key(edge: Triple): Array[Byte] = {
     val range = new SimplePositionedMutableByteRange(1024)
-    OrderedBytes.encodeString(range, edge.subject.entity, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.subject.id, Order.ASCENDING)
     OrderedBytes.encodeString(range, edge.predicate, Order.ASCENDING)
-    OrderedBytes.encodeString(range, edge.`object`.entity, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.`object`.id, Order.ASCENDING)
     range.getBytes.slice(0, range.getPosition)
   }
 
-  override def decode(key: Array[Byte], value: Array[Byte]): Relationship = {
+  private def decode(key: Array[Byte], value: Array[Byte]): Triple = {
     val range = new SimplePositionedMutableByteRange(key)
     val subject = OrderedBytes.decodeString(range)
     val predicate = OrderedBytes.decodeString(range)

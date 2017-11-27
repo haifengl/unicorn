@@ -16,11 +16,6 @@
 
 package unicorn.unibase.graph
 
-import com.typesafe.scalalogging.Logger
-import unicorn.bigtable.{BigTable, RowScan}
-import unicorn.json._
-import unicorn.unibase._
-
 /** Graphs are mathematical structures used to model pairwise relations
   * between objects. A graph is made up of vertices (nodes) which are
   * connected by edges (arcs or lines). A graph may be undirected, meaning
@@ -37,53 +32,29 @@ import unicorn.unibase._
   *
   * @author Haifeng Li
   */
-trait GraphLike[T, V <: VertexId[T], E <: EdgeLike[T, V]] {
-  val logger: Logger
-  val table: BigTable with RowScan
-  /** Edge property serializer. */
-  val serializer = new JsonSerializer()
+trait GraphLike[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]] {
 
-  /*
-  /** Returns a Gremlin traversal machine. */
-  def traversal: Gremlin = {
-    new Gremlin(new SimpleTraveler(this, direction = Direction.Both))
-  }
+  /** Gets a vertex. */
+  def apply(vertex: T): Option[V]
 
-  /** Returns a Gremlin traversal machine starting at the given vertex. */
-  def apply(vertex: V): GremlinVertices = {
-    val g = traversal
-    g.v(vertex)
-  }
-  */
+  /** Gets a vertex. */
+  def apply(vertex: VI): Option[V]
 
   /** Returns the edges of a given vertex. */
-  def apply(vertex: V): Iterator[E] = {
-    table.scanPrefix(RowKey(vertex.key), DocumentColumnFamily).map { row =>
-      val column = row.families(0).columns(0)
-      decode(row.key, column.value)
-    }
-  }
+  def edges(vertex: T): Iterator[E]
 
-  /** Returns the row key of the edge. */
-  def key(edge: E): Array[Byte]
+  /** Returns the edges of a given vertex. */
+  def edges(vertex: VI): Iterator[E]
 
-  /** Returns the value of the edge, which will be put into underlying BigTable.
-    * The default value is JsUndefined.
-    */
-  def value(edge: E): Array[Byte] = {
-    JsonSerializer.undefined
-  }
+  /** Returns the edges of given type. */
+  def edges(vertex: T, `type`: String): Iterator[E]
 
-  /** Decodes the edge from key-value pair. */
-  def decode(key: Array[Byte], value: Array[Byte]): E
+  /** Returns the edges of given type. */
+  def edges(vertex: VI, `type`: String): Iterator[E]
 
   /** Adds an edge. If the edge exists, the associated data will be overwritten. */
-  def add(edge: E): Unit = {
-    table(key(edge), DocumentColumnFamily, DocumentColumn) = value(edge)
-  }
+  def add(edge: E): Unit
 
   /** Deletes an edge. */
-  def delete(edge: E): Unit = {
-    table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
-  }
+  def delete(edge: E): Unit
 }
