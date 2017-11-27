@@ -1,4 +1,5 @@
 name := "unicorn-rocksdb"
 
-libraryDependencies += "org.rocksdb" % "rocksdbjni" % "5.8.6"
+// 5.x series crash on newIterator
+libraryDependencies += "org.rocksdb" % "rocksdbjni" % "4.13.5"
 

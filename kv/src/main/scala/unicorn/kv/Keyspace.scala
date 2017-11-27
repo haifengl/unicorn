@@ -93,11 +93,15 @@ trait KeyValueIterator extends Iterator[KeyValue] with AutoCloseable {
 }
 
 /** If the key is ordered, we can scan a range of keys. */
-trait OrderedKeyspace extends KeyValueStore {
+trait OrderedKeyspace extends Keyspace {
   /** Start row in a table. */
   val TableStartKey: Array[Byte]
   /** End row in a table. */
   val TableEndKey: Array[Byte]
+
+  /** Scan the whole space.
+    */
+  def scan: Iterator[KeyValue]
 
   /** Scan a range of keys.
     * @param startRow row to start scanner at or after (inclusive)

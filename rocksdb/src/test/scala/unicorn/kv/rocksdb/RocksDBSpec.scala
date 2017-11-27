@@ -50,7 +50,7 @@ class RocksDBSpec extends Specification with BeforeAfterAll {
       table("row1") === None
     }
 
-    "get the row" in {
+    "scan" in {
       table.put("foo1", "v1")
       table.put("foo2", "v1")
       table.put("foo3", "v1")

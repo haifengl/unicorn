@@ -16,8 +16,8 @@
 
 package unicorn.kv.rocksdb
 
-import org.rocksdb.{Options, ReadOptions, Slice, WriteBatch, WriteOptions}
-import unicorn.kv.{KeyValue, OrderedKeyspace}
+import org.rocksdb.{Options, ReadOptions, WriteBatch, WriteOptions}
+import unicorn.kv._
 
 /** A Rockspace is actually a plain RocksDB in its own directory.
   *
@@ -76,13 +76,19 @@ class Rockspace(val path: String, val options: Options = new Options) extends Or
 
   override def scan(start: Array[Byte], end: Array[Byte]): Iterator[KeyValue] = {
     val options = new ReadOptions
+    //Compiler doesn't recognize setIterateUpperBound. why???
     //options.setIterateUpperBound(new Slice(end))
     val it = rocksdb.newIterator(options)
     it.seek(start)
     new Iterator[KeyValue] {
-      override def hasNext: Boolean = it.isValid
+      override def hasNext: Boolean = {
+        it.isValid && (compareByteArray(it.key, end) < 0)
+      }
+
       override def next: KeyValue = {
-        KeyValue(it.key, it.value())
+        val kv = KeyValue(it.key, it.value())
+        it.next
+        kv
       }
     }
   }
