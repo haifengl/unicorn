@@ -30,7 +30,7 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class Cassandra(transport: TFramedTransport) extends Database {
+class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] {
   private lazy val logger = Logger(getClass)
 
   val protocol = new TBinaryProtocol(transport)

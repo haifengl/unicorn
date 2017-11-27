@@ -132,23 +132,23 @@ class HBaseTable(val db: HBase, val name: String) extends OrderedBigTableWithFil
     HBaseTable.getRow(table.get(get)).families
   }
 
-  override def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+  override def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
     val scan = newScan(startRow, endRow)
     families.foreach { case (family, columns) => scanColumns(scan, family, columns) }
-    new HBaseRowScanner(table.getScanner(scan))
+    new HBaseRowIterator(table.getScanner(scan))
   }
 
-  override def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  override def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator = {
     val scan = newScan(startRow, endRow)
     scanColumns(scan, family, columns)
-    new HBaseRowScanner(table.getScanner(scan))
+    new HBaseRowIterator(table.getScanner(scan))
   }
 
-  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
     val scan = newScan(startRow, endRow)
     scan.setFilter(hbaseFilter(filter))
     families.foreach { case (family, columns) => scanColumns(scan, family, columns) }
-    new HBaseRowScanner(table.getScanner(scan))
+    new HBaseRowIterator(table.getScanner(scan))
   }
 
   private[unicorn] def hbaseScan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])], filter: Option[ScanFilter.Expression] = None): Scan = {
@@ -158,11 +158,11 @@ class HBaseTable(val db: HBase, val name: String) extends OrderedBigTableWithFil
     scan
   }
 
-  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  override def scan(filter: ScanFilter.Expression, startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator = {
     val scan = newScan(startRow, endRow)
     scan.setFilter(hbaseFilter(filter))
     scanColumns(scan, family, columns)
-    new HBaseRowScanner(table.getScanner(scan))
+    new HBaseRowIterator(table.getScanner(scan))
   }
 
   override def get(filter: ScanFilter.Expression, row: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): Seq[ColumnFamily] = {
@@ -205,14 +205,14 @@ class HBaseTable(val db: HBase, val name: String) extends OrderedBigTableWithFil
     case Or(list) => new FilterList(FilterList.Operator.MUST_PASS_ONE, list.map(hbaseFilter(_)).asJava)
   }
 
-  override def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): IntraRowScanner = {
+  override def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): ColumnIterator = {
     val scan = newColumnRangeScan(row, family, startColumn, stopColumn, 100)
-    new HBaseColumnScanner(table.getScanner(scan))
+    new HBaseColumnIterator(table.getScanner(scan))
   }
 
-  def prefixColumnScan(row: Array[Byte], family: String, prefix: Seq[Array[Byte]]): IntraRowScanner = {
+  def prefixColumnScan(row: Array[Byte], family: String, prefix: Seq[Array[Byte]]): ColumnIterator = {
     val scan = newColumnPrefixScan(row, family, prefix, 100)
-    new HBaseColumnScanner(table.getScanner(scan))
+    new HBaseColumnIterator(table.getScanner(scan))
   }
 
   override def put(row: Array[Byte], family: String, column: Array[Byte], value: Array[Byte], timestamp: Long): Unit = {
@@ -469,7 +469,7 @@ object HBaseTable {
   }
 }
 
-class HBaseRowScanner(scanner: ResultScanner) extends RowScanner {
+class HBaseRowIterator(scanner: ResultScanner) extends RowIterator {
   private val iterator = scanner.iterator
 
   override def close: Unit = scanner.close
@@ -481,7 +481,7 @@ class HBaseRowScanner(scanner: ResultScanner) extends RowScanner {
   }
 }
 
-class HBaseColumnScanner(scanner: ResultScanner) extends IntraRowScanner {
+class HBaseColumnIterator(scanner: ResultScanner) extends ColumnIterator {
   private val rowIterator = scanner.iterator
   private var cellIterator = if (rowIterator.hasNext) rowIterator.next.listCells.iterator else null
 
