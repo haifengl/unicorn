@@ -16,7 +16,6 @@
 
 package unicorn
 
-import java.nio.ByteBuffer
 import java.nio.charset.Charset
 
 /**
@@ -29,11 +28,37 @@ package object bigtable {
   private[bigtable] implicit def string2Bytes(x: String) = x.getBytes(UTF8)
   private[bigtable] implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(UTF8))
 
-  /** Helper function convert ByteBuffer to Array[Byte]. */
-  private[bigtable] implicit def byteBuffer2ArrayByte(buffer: ByteBuffer): Array[Byte] = {
-    val bytes = new Array[Byte](buffer.position)
-    buffer.position(0)
-    buffer.get(bytes)
-    bytes
+  /** When scanning for a prefix the scan should stop immediately
+    * after the the last key that has the specified prefix. This
+    * method calculates the closest next key immediately following
+    * the given prefix.
+    *
+    * @param prefix The key prefix.
+    * @param lastKey The (logic) last key in the table.
+    * @return the closest next key immediately following the given prefix.
+    */
+  private[bigtable] def prefixEndKey(prefix: Array[Byte], lastKey: Array[Byte]): Array[Byte] = {
+    val ff : Byte = 0xFF.toByte
+    val one: Byte = 1
+
+    // Essentially we are treating it like an 'unsigned very very long' and doing +1 manually.
+    // Search for the place where the trailing 0xFFs start
+    val offset = prefix.reverse.indexOf(ff) match {
+      case -1 => prefix.length
+      case  x => prefix.length - x - 1
+    }
+
+    // We got an 0xFFFF... (only FFs) endRow value which is
+    // the last possible prefix before the end of the table.
+    // So set it to stop at the 'end of the table'
+    if (offset == 0) {
+      return lastKey
+    }
+
+    // Copy the right length of the original
+    val endRow = java.util.Arrays.copyOfRange(prefix, 0, offset)
+    // And increment the last one
+    endRow(endRow.length - 1) = (endRow(endRow.length - 1) + one).toByte
+    endRow
   }
 }
