@@ -16,32 +16,34 @@
 
 package unicorn.unibase
 
-import unicorn.bigtable._
+import unicorn.bigtable.{Column, OrderedBigTable, RowIterator}
 import unicorn.json._
+import unicorn.kv._
 
-/** Scan operations.
+/** Keyspace scan operations.
   *
   * @author Haifeng Li
   */
-trait ScanOps {
-  val table: BigTable with RowScan
+trait KeyspaceScanOps {
+  val table: OrderedKeyspace
   val rowkey: RowKey
+  val serializer = new JsonSerializer()
 
   /** Scan the whole table. */
-  def scan(fields: Seq[String]): Scanner = {
-    scanner(table.scan(DocumentColumnFamily, fields))
+  def scan: Iterator[JsObject] = {
+    scan(table.scan)
   }
 
   /** Scan the the rows whose key starts with the given prefix. */
-  def scan(prefix: Key, fields: String*): Scanner = {
-    scanner(table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields))
+  def scan(prefix: Key): Iterator[JsObject] = {
+    scan(table.scan(rowkey(prefix)))
   }
 
   /** Scan the the rows in the given range.
     * @param start row to start scanner at or after (inclusive)
     * @param end row to stop scanner before (exclusive)
     */
-  def scan(start: Key, end: Key, fields: String*): Scanner = {
+  def scan(start: Key, end: Key): Iterator[JsObject] = {
     val startKey = rowkey(start)
     val endKey = rowkey(end)
 
@@ -50,49 +52,90 @@ trait ScanOps {
       throw new IllegalArgumentException("Start and end keys are the same")
 
     if (c < 0)
-      scanner(table.scan(startKey, endKey, DocumentColumnFamily, fields))
+      scan(table.scan(startKey, endKey))
     else
-      scanner(table.scan(endKey, startKey, DocumentColumnFamily, fields))
+      scan(table.scan(endKey, startKey))
   }
 
-  private def scanner(rows: RowScanner): Scanner = {
-    if (this.isInstanceOf[Drawer])
-      new DrawerScanner(rows)
-    else if (this.isInstanceOf[Table])
-      new TableScanner(rows)
+  private def scan(it: Iterator[KeyValue]): Iterator[JsObject] = {
+    it.map { kv => serializer.deserialize(kv.value).asInstanceOf[JsObject] }
+  }
+}
+
+/** BigTable scan operations.
+  *
+  * @author Haifeng Li
+  */
+trait BigTableScanOps {
+  val table: OrderedBigTable
+  val rowkey: RowKey
+
+  /** Scan the whole table. */
+  def scan(fields: Seq[String]): Iterator[JsObject] = {
+    scan(table.scan(DocumentColumnFamily, fields))
+  }
+
+  /** Scan the the rows whose key starts with the given prefix. */
+  def scan(prefix: Key, fields: String*): Iterator[JsObject] = {
+    scan(table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields))
+  }
+
+  /** Scan the the rows in the given range.
+    * @param start row to start scanner at or after (inclusive)
+    * @param end row to stop scanner before (exclusive)
+    */
+  def scan(start: Key, end: Key, fields: String*): Iterator[JsObject] = {
+    val startKey = rowkey(start)
+    val endKey = rowkey(end)
+
+    val c = compareByteArray(startKey, endKey)
+    if (c == 0)
+      throw new IllegalArgumentException("Start and end keys are the same")
+
+    if (c < 0)
+      scan(table.scan(startKey, endKey, DocumentColumnFamily, fields))
+    else
+      scan(table.scan(endKey, startKey, DocumentColumnFamily, fields))
+  }
+
+  private def scan(rows: RowIterator): Iterator[JsObject] = {
+    if (this.isInstanceOf[Table])
+      new TableIterator(rows)
+    else if (this.isInstanceOf[Documents])
+      new SimpleDocumentIterator(rows)
     else
       throw new IllegalStateException("Unsupported Scan table type: " + getClass)
   }
 }
 
 /** Row scan iterator */
-trait Scanner extends Iterator[JsValue] {
-  val rows: RowScanner
+trait DocumentIterator extends Iterator[JsObject] with AutoCloseable {
+  val rows: RowIterator
 
   override def hasNext: Boolean = rows.hasNext
 
-  override def next: JsValue = {
+  override def next: JsObject = {
     val columns = rows.next.families(0).columns
     deserialize(columns)
   }
 
-  def close: Unit = rows.close
+  override def close: Unit = rows.close
 
-  def deserialize(columns: Seq[Column]): JsValue
+  private[unibase] def deserialize(columns: Seq[Column]): JsObject
 }
 
-private class DrawerScanner(val rows: RowScanner) extends Scanner {
+private class SimpleDocumentIterator(val rows: RowIterator) extends DocumentIterator {
   val serializer = new JsonSerializer()
 
-  override def deserialize(columns: Seq[Column]): JsValue = {
-    serializer.deserialize(columns(0).value)
+  override def deserialize(columns: Seq[Column]): JsObject = {
+    serializer.deserialize(columns(0).value).asInstanceOf[JsObject]
   }
 }
 
-private class TableScanner(val rows: RowScanner) extends Scanner {
+private class TableIterator(val rows: RowIterator) extends DocumentIterator {
   val serializer = new JsonSerializer()
 
-  override def deserialize(columns: Seq[Column]): JsValue = {
+  override def deserialize(columns: Seq[Column]): JsObject = {
     val doc = JsObject()
     columns.foreach { case Column(qualifier, value, _) =>
       doc(qualifier) = serializer.deserialize(value)

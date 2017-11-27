@@ -25,8 +25,8 @@ package object bigtable {
 
   private[bigtable] val UTF8 = Charset.forName("UTF-8")
 
-  private[bigtable] implicit def string2Bytes(x: String) = x.getBytes(UTF8)
-  private[bigtable] implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(UTF8))
+  private[bigtable] implicit def str2bytes(x: String) = x.getBytes(UTF8)
+  private[bigtable] implicit def strSeq2bytesSeq(x: Seq[String]) = x.map(_.getBytes(UTF8))
 
   /** When scanning for a prefix the scan should stop immediately
     * after the the last key that has the specified prefix. This

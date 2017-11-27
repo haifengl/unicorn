@@ -23,7 +23,7 @@ import unicorn.json._
   *
   * @author Haifeng Li
   */
-class Unibase[+T <: BigTable with RowScan](db: Database[T]) extends Cabinet(db) {
+class Unibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends Cabinet {
   //import unicorn.unibase.graph.{KnowledgeGraphOSP, KnowledgeGraphPOS, KnowledgeGraphSPO}
 /*
   /** Returns a document table.
@@ -65,7 +65,7 @@ class Unibase[+T <: BigTable with RowScan](db: Database[T]) extends Cabinet(db) 
 }
 
 object Unibase {
-  def apply[T <: BigTable with RowScan](db: Database[T]): Unibase[T] = {
+  def apply[T <: OrderedBigTable](db: BigTableDatabase[T]): Unibase[T] = {
     new Unibase[T](db)
   }
 }

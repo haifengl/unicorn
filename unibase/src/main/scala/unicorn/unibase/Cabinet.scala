@@ -16,7 +16,7 @@
 
 package unicorn.unibase
 
-import unicorn.bigtable.{BigTable, Database}
+import unicorn.bigtable.{BigTable, BigTableDatabase}
 import unicorn.json._
 
 /** A Cabinet is a database of documents. A collection of documents can be
@@ -27,21 +27,65 @@ import unicorn.json._
   *
   * @author Haifeng Li
   */
-class Cabinet[+T <: BigTable](db: Database[T]) {
+trait Cabinet {
+
+  /** Returns a document collection.
+    * @param name The name of document collection.
+    */
+  def documents(name: String): Documents
+
+  /*
+    /** Returns a read only graph, which doesn't need an ID
+      * generator. This is sufficient for graph traversal and analytics.
+      *
+      * @param name The name of graph table.
+      */
+    def graph(name: String): Graph
+  */
+
+  /** Creates a document collection.
+    * @param name the name of document collection.
+    * @param key the document field(s) used as row key in BigTable.
+    *            If not specified, the "_id" field is used as the
+    *            document key as in MongoDB.
+    */
+  def createDocuments(name: String, key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit
+
+  /*
+    /** Creates a graph table.
+      * @param name the name of graph table.
+      */
+    def createGraph(name: String): Unit
+  */
+
+  /** Drops a table. */
+  def drop(name: String): Unit
+
+  /** Tests if a table exists.
+    * @param name the name of table.
+    */
+  def exists(name: String): Boolean
+
+  /** Returns the list of BigTables. */
+  def tables: Set[String]
+}
+
+class BigTableCabinet[+T <: BigTable](db: BigTableDatabase[T]) extends Cabinet {
 
   private lazy val metaTable = {
-    if (!db.tableExists(MetaTableName)) {
-      val metaTable = db.createTable(MetaTableName, DocumentColumnFamily)
+    if (!db.exists(MetaTableName)) {
+      db.create(MetaTableName, DocumentColumnFamily)
+      val metaTable = db(MetaTableName)
       metaTable.close
     }
 
     new Table(db(MetaTableName), RowKey("table"))
   }
 
-  /** Returns a document drawer.
-    * @param name The name of table.
+  /** Returns a document collection.
+    * @param name The name of document collection.
     */
-  def drawer(name: String): Drawer = {
+  override def documents(name: String): Documents = {
     val meta = metaTable(name)
     if (meta.isEmpty)
       throw new IllegalArgumentException(s"$name metadata doesn't exist")
@@ -50,11 +94,11 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
       throw new IllegalArgumentException(s"$name is not a drawer")
 
     val rowkey = meta.map(TableMeta.rowkey(_)).get
-    new Drawer(db(name), rowkey)
+    new BigTableDocuments(db(name), rowkey)
   }
 
-  /** Returns a document table.
-    * @param name The name of table.
+  /** Returns a document collection.
+    * @param name The name of document collection.
     */
   def table(name: String): Table = {
     val meta = metaTable(name)
@@ -77,17 +121,14 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
     new Graph(db(name), db(graphVertexKeyTable(name)))
   }
 */
-  /** Creates a document drawer.
-    * @param name the name of table.
+  /** Creates a document collection.
+    * @param name the name of document collection.
     * @param key the document field(s) used as row key in BigTable.
     *            If not specified, the "_id" field is used as the
     *            document key as in MongoDB.
     */
-  def createDrawer(name: String,
-                   key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
-    val table = db.createTable(name, DocumentColumnFamily)
-    // RocksDB will hold the lock if we don't close it
-    table.close
+  override def createDocuments(name: String, key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
+    db.create(name, DocumentColumnFamily)
 
     val meta = TableMeta(name, TABLE_TYPE_DRAWER, key)
     metaTable.upsert(meta)
@@ -101,9 +142,7 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
     */
   def createTable(name: String,
                    key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
-    val table = db.createTable(name, DocumentColumnFamily)
-    // RocksDB will hold the lock if we don't close it
-    table.close
+    db.create(name, DocumentColumnFamily)
 
     val meta = TableMeta(name, TABLE_TYPE_TABLE, key)
     metaTable.upsert(meta)
@@ -127,8 +166,8 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
   }
 */
   /** Drops a table. All column families in the table will be dropped. */
-  def drop(name: String): Unit = {
-    db.dropTable(name)
+  override def drop(name: String): Unit = {
+    db.drop(name)
     metaTable.delete(name)
   }
 
@@ -136,32 +175,32 @@ class Cabinet[+T <: BigTable](db: Database[T]) {
     * @param name the name of table.
     */
   def truncate(name: String): Unit = {
-    db.truncateTable(name)
+    db.truncate(name)
   }
 
   /** Tests if a BigTable exists.
     * @param name the name of table.
     */
-  def exists(name: String): Boolean = {
-    db.tableExists(name)
+  override def exists(name: String): Boolean = {
+    db.exists(name)
   }
 
   /** Major compacts a BigTable. Asynchronous operation.
     * @param name the name of table.
     */
   def compact(name: String): Unit = {
-    db.compactTable(name)
+    db.compact(name)
   }
 
   /** Returns the list of BigTables. */
-  def tables: Set[String] = {
+  override def tables: Set[String] = {
     db.tables
   }
 }
 
 object Cabinet {
-  def apply[T <: BigTable](db: Database[T]): Cabinet[T] = {
-    new Cabinet[T](db)
+  def apply[T <: BigTable](db: BigTableDatabase[T]): Cabinet = {
+    new BigTableCabinet[T](db)
   }
 }
 

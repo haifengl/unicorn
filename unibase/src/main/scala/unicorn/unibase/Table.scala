@@ -19,7 +19,7 @@ package unicorn.unibase
 import unicorn.json._
 import unicorn.bigtable._
 
-/** Similar to a `Drawer`, a `Table` is a collection of documents but can get
+/** Extending `Documents`, a `Table` is a collection of documents but can get
   * and set only some fields of documents besides the whole document. However,
   * a table may take more space on the disk.
   *
