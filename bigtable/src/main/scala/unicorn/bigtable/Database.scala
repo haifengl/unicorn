@@ -22,11 +22,11 @@ import java.util.Properties
   *
   * @author Haifeng Li
   */
-trait Database extends AutoCloseable {
+trait Database[+T <: BigTable] extends AutoCloseable {
   /** Returns a table.
     * @param name the name of table.
     */
-  def apply(name: String): BigTable
+  def apply(name: String): T
 
   /** Returns the list of tables. */
   def tables: Set[String]

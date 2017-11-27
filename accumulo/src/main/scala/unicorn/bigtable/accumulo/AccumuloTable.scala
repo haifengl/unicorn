@@ -75,7 +75,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends OrderedBigTable 
     val scanner = newScanner
     scanner.setRange(new Range(new Text(row)))
     families.foreach { case (family, columns) => getColumns(scanner, family, columns) }
-    val rowScanner = new AccumuloRowScanner(scanner)
+    val rowScanner = new AccumuloRowIterator(scanner)
     if (rowScanner.hasNext) rowScanner.next.families else Seq.empty
   }
 
@@ -94,7 +94,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends OrderedBigTable 
     val ranges = rows.map { row => new Range(new Text(row)) }
     scanner.setRanges(ranges.asJava)
     families.foreach { case (family, columns) => getColumns(scanner, family, columns) }
-    val rowScanner = new AccumuloRowScanner(scanner)
+    val rowScanner = new AccumuloRowIterator(scanner)
     rowScanner.toSeq
   }
 
@@ -108,11 +108,11 @@ class AccumuloTable(val db: Accumulo, val name: String) extends OrderedBigTable 
     else
       columns.foreach { column => scanner.fetchColumn(new Text(family), new Text(column)) }
 
-    val rowScanner = new AccumuloRowScanner(scanner)
+    val rowScanner = new AccumuloRowIterator(scanner)
     rowScanner.toSeq
   }
 
-  override def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+  override def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
     val scanner = newScanner
     // from startRow inclusive to endRow exclusive.
     scanner.setRange(new Range(rowKey(startRow), true, rowKey(endRow), false))
@@ -123,10 +123,10 @@ class AccumuloTable(val db: Accumulo, val name: String) extends OrderedBigTable 
         columns.foreach { column => scanner.fetchColumn(new Text(family), new Text(column)) }
     }
 
-    new AccumuloRowScanner(scanner)
+    new AccumuloRowIterator(scanner)
   }
 
-  override def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  override def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator = {
     val scanner = newScanner
     scanner.setRange(new Range(rowKey(startRow), rowKey(endRow)))
     if (columns.isEmpty)
@@ -134,7 +134,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends OrderedBigTable 
     else
       columns.foreach { column => scanner.fetchColumn(new Text(family), new Text(column)) }
 
-    new AccumuloRowScanner(scanner)
+    new AccumuloRowIterator(scanner)
   }
 
   override def put(row: Array[Byte], family: String, column: Array[Byte], value: Array[Byte], timestamp: Long): Unit = {
@@ -260,7 +260,7 @@ class AccumuloTable(val db: Accumulo, val name: String) extends OrderedBigTable 
   }
 }
 
-class AccumuloRowScanner(scanner: ScannerBase) extends RowScanner {
+class AccumuloRowIterator(scanner: ScannerBase) extends RowIterator {
   private val iterator = scanner.iterator
   private var cell = if (iterator.hasNext) iterator.next else null
 

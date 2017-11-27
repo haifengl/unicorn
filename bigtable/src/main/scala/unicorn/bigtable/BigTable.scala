@@ -131,7 +131,7 @@ trait BigTable extends AutoCloseable {
 }
 
 /** Row scan iterator */
-trait RowScanner extends Iterator[Row] with AutoCloseable {
+trait RowIterator extends Iterator[Row] with AutoCloseable {
   def close: Unit
 }
 
@@ -142,48 +142,11 @@ trait OrderedBigTable extends BigTable {
   /** End row in a table. */
   val TableEndRow: Array[Byte]
 
-  /** When scanning for a prefix the scan should stop immediately after the the last row that
-    * has the specified prefix. This method calculates the closest next row key immediately following
-    * the given prefix.
-    *
-    * To scan rows with a given prefix, do
-    * {{{
-    * scan(prefix, nextRowKeyForPrefix(prefix))
-    * }}}
-    *
-    * @param prefix the row key prefix.
-    * @return the closest next row key immediately following the given prefix.
-    */
-  private[bigtable] def prefixEndRow(prefix: Array[Byte]): Array[Byte] = {
-    val ff : Byte = 0xFF.toByte
-    val one: Byte = 1
-
-    // Essentially we are treating it like an 'unsigned very very long' and doing +1 manually.
-    // Search for the place where the trailing 0xFFs start
-    val offset = prefix.reverse.indexOf(ff) match {
-      case -1 => prefix.length
-      case  x => prefix.length - x - 1
-    }
-
-    // We got an 0xFFFF... (only FFs) endRow value which is
-    // the last possible prefix before the end of the table.
-    // So set it to stop at the 'end of the table'
-    if (offset == 0) {
-      return TableEndRow
-    }
-
-    // Copy the right length of the original
-    val endRow = java.util.Arrays.copyOfRange(prefix, 0, offset)
-    // And increment the last one
-    endRow(endRow.length - 1) = (endRow(endRow.length - 1) + one).toByte
-    endRow
-  }
-
   /** Scan a column family.
     * @param startRow row to start scanner at or after (inclusive)
     * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], endRow: Array[Byte], family: String): RowScanner = {
+  def scan(startRow: Array[Byte], endRow: Array[Byte], family: String): RowIterator = {
     scan(startRow, endRow, family, Seq.empty)
   }
 
@@ -191,7 +154,7 @@ trait OrderedBigTable extends BigTable {
     * @param startRow row to start scanner at or after (inclusive)
     * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  def scan(startRow: Array[Byte], endRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator = {
     scan(startRow, endRow, Seq((family, columns)))
   }
 
@@ -199,7 +162,7 @@ trait OrderedBigTable extends BigTable {
     * @param startRow row to start scanner at or after (inclusive)
     * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], endRow: Array[Byte]): RowScanner = {
+  def scan(startRow: Array[Byte], endRow: Array[Byte]): RowIterator = {
     scan(startRow, endRow, Seq.empty)
   }
 
@@ -207,46 +170,46 @@ trait OrderedBigTable extends BigTable {
     * @param startRow row to start scanner at or after (inclusive)
     * @param endRow row to stop scanner before (exclusive)
     */
-  def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner
+  def scan(startRow: Array[Byte], endRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator
 
   /** Scan the whole table. */
-  def scan(family: String): RowScanner = {
+  def scan(family: String): RowIterator = {
     scan(TableStartRow, TableEndRow, family)
   }
 
   /** Scan the whole table. */
-  def scan(family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  def scan(family: String, columns: Seq[Array[Byte]]): RowIterator = {
     scan(TableStartRow, TableEndRow, family, columns)
   }
 
   /** Scan the whole table. */
-  def scan(families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+  def scan(families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
     scan(TableStartRow, TableEndRow, families)
   }
 
   /** Scan the whole table. */
-  def scan(): RowScanner = {
+  def scan(): RowIterator = {
     scan(TableStartRow, TableEndRow)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: Array[Byte], family: String): RowScanner = {
-    scan(prefix, prefixEndRow(prefix), family)
+  def scanPrefix(prefix: Array[Byte], family: String): RowIterator = {
+    scan(prefix, prefixEndKey(prefix, TableEndRow), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
-    scan(prefix, prefixEndRow(prefix), family, columns)
+  def scanPrefix(prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator = {
+    scan(prefix, prefixEndKey(prefix, TableEndRow), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
-    scan(prefix, prefixEndRow(prefix), families)
+  def scanPrefix(prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
+    scan(prefix, prefixEndKey(prefix, TableEndRow), families)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(prefix: Array[Byte]): RowScanner = {
-    scan(prefix, prefixEndRow(prefix))
+  def scanPrefix(prefix: Array[Byte]): RowIterator = {
+    scan(prefix, prefixEndKey(prefix, TableEndRow))
   }
 }
 
@@ -272,7 +235,7 @@ trait OrderedBigTableWithFilter extends OrderedBigTable {
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String): RowScanner = {
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String): RowIterator = {
     scan(filter, startRow, stopRow, family, Seq.empty)
   }
 
@@ -281,14 +244,14 @@ trait OrderedBigTableWithFilter extends OrderedBigTable {
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator
 
   /** Scan the range for all columns in one or more column families. If families is empty, get all column families.
     * @param startRow row to start scanner at or after (inclusive)
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte]): RowIterator = {
     scan(filter, startRow, stopRow, Seq.empty)
   }
 
@@ -297,7 +260,7 @@ trait OrderedBigTableWithFilter extends OrderedBigTable {
     * @param stopRow row to stop scanner before (exclusive)
     * @param filter filter expression
     */
-  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner
+  def scan(filter: ScanFilter.Expression, startRow: Array[Byte], stopRow: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator
 
   /** Get a column family.
     * @param filter filter expression
@@ -328,43 +291,43 @@ trait OrderedBigTableWithFilter extends OrderedBigTable {
   def getKeyOnly(row: Array[Byte], families: String*): Seq[ColumnFamily]
 
   /** Scan the whole table. */
-  def scan(filter: ScanFilter.Expression, family: String): RowScanner = {
+  def scan(filter: ScanFilter.Expression, family: String): RowIterator = {
     scan(filter, TableStartRow, TableEndRow, family)
   }
 
   /** Scan the whole table. */
-  def scan(filter: ScanFilter.Expression, family: String, columns: Seq[Array[Byte]]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, family: String, columns: Seq[Array[Byte]]): RowIterator = {
     scan(filter, TableStartRow, TableEndRow, family, columns)
   }
 
   /** Scan the whole table. */
-  def scan(filter: ScanFilter.Expression): RowScanner = {
+  def scan(filter: ScanFilter.Expression): RowIterator = {
     scan(filter, TableStartRow, TableEndRow)
   }
 
   /** Scan the whole table. */
-  def scan(filter: ScanFilter.Expression, families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
+  def scan(filter: ScanFilter.Expression, families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
     scan(filter, TableStartRow, TableEndRow, families)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], family: String): RowScanner = {
-    scan(filter, prefix, prefixEndRow(prefix), family)
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], family: String): RowIterator = {
+    scan(filter, prefix, prefixEndKey(prefix, TableEndRow), family)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowScanner = {
-    scan(filter, prefix, prefixEndRow(prefix), family, columns)
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], family: String, columns: Seq[Array[Byte]]): RowIterator = {
+    scan(filter, prefix, prefixEndKey(prefix, TableEndRow), family, columns)
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte]): RowScanner = {
-    scan(filter, prefix, prefixEndRow(prefix))
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte]): RowIterator = {
+    scan(filter, prefix, prefixEndKey(prefix, TableEndRow))
   }
 
   /** Scan the rows whose key starts with the given prefix. */
-  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowScanner = {
-    scan(filter, prefix, prefixEndRow(prefix), families)
+  def scanPrefix(filter: ScanFilter.Expression, prefix: Array[Byte], families: Seq[(String, Seq[Array[Byte]])]): RowIterator = {
+    scan(filter, prefix, prefixEndKey(prefix, TableEndRow), families)
   }
 }
 
@@ -398,7 +361,7 @@ trait CheckAndPut {
 }
 
 /** Intra-row scan iterator */
-trait IntraRowScanner extends Iterator[Column] with AutoCloseable {
+trait ColumnIterator extends Iterator[Column] with AutoCloseable {
   def close: Unit
 }
 
@@ -408,7 +371,7 @@ trait IntraRowScan {
     * @param startColumn column to start scanner at or after (inclusive)
     * @param stopColumn column to stop scanner before or at (inclusive)
     */
-  def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): IntraRowScanner
+  def intraRowScan(row: Array[Byte], family: String, startColumn: Array[Byte], stopColumn: Array[Byte]): ColumnIterator
 }
 
 /** If BigTable supports cell level security. */
