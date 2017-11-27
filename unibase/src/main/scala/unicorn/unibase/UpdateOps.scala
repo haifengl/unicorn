@@ -40,7 +40,7 @@ trait UpdateOps {
     */
   def set(key: Key, doc: JsObject): Unit = {
     val columns = doc.fields.map { case (field, value) =>
-      Column(field, serializer.serialize(value))
+      Column(str2bytes(field), serializer.serialize(value))
     }.toSeq
 
     table.put(rowkey(key), DocumentColumnFamily, columns)
@@ -64,7 +64,7 @@ trait UpdateOps {
     * @param doc the fields to delete.
     */
   def unset(key: Key, doc: JsObject): Unit = {
-    val columns = doc.fields.map { case (field, _) => string2Bytes(field) }.toSeq
+    val columns = doc.fields.map { case (field, _) => str2bytes(field) }.toSeq
     table.delete(rowkey(key), DocumentColumnFamily, columns)
   }
 }

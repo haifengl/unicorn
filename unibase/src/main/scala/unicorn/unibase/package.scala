@@ -18,12 +18,11 @@ package unicorn
 
 import org.apache.hadoop.hbase.util.{Order => HBaseOrder}
 import java.math.BigDecimal
+import java.nio.charset.Charset
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
-
 import unicorn.json._
-import unicorn.bigtable.UTF8
 
 /**
   * @author Haifeng Li
@@ -37,7 +36,10 @@ package object unibase {
   /** Descending sort order. */
   val DESCENDING = HBaseOrder.DESCENDING
 
-  private[unibase] implicit def bytes2string(x: Array[Byte]) = new String(x, UTF8)
+  private[unibase] val UTF8 = Charset.forName("UTF-8")
+  private[unibase] def str2bytes(x: String) = x.getBytes(UTF8)
+  private[unibase] implicit def bytes2str(x: Array[Byte]) = new String(x, UTF8)
+  private[unibase] implicit def strSeq2bytesSeq(x: Seq[String]) = x.map(_.getBytes(UTF8))
 
   implicit def int2Key(x: Int) = IntKey(x)
   implicit def long2Key(x: Long) = LongKey(x)

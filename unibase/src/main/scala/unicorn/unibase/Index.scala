@@ -28,7 +28,7 @@ import unicorn.bigtable._
   *               List the columns to be included in the composite index,
   *               in sort-priority order.
   */
-class Index(val indexTable: BigTable with RowScan, column: RowKey) {
+class Index(val indexTable: OrderedBigTable, column: RowKey) {
 
   private def indexKey(key: Array[Byte], doc: JsObject): Array[Byte] = {
     val indexKey = column(doc)

@@ -51,3 +51,7 @@ case class ObjectIdKey(key: ObjectId) extends PrimitiveKey
 case class UUIDKey(key: UUID) extends PrimitiveKey
 
 case class CompositeKey(keys: Seq[PrimitiveKey]) extends Key
+
+object CompositeKey {
+  def apply(keys: PrimitiveKey*): CompositeKey = CompositeKey(keys)
+}
