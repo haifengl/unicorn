@@ -63,6 +63,8 @@ lazy val snowflake = project.in(file("snowflake")).settings(commonSettings: _*)
 
 lazy val kv = project.in(file("kv")).settings(commonSettings: _*)
 
+lazy val rocksdb = project.in(file("rocksdb")).settings(commonSettings: _*).dependsOn(kv)
+
 lazy val bigtable = project.in(file("bigtable")).settings(commonSettings: _*)
 
 lazy val hbase = project.in(file("hbase")).settings(commonSettings: _*).dependsOn(bigtable)
@@ -71,11 +73,9 @@ lazy val accumulo = project.in(file("accumulo")).settings(commonSettings: _*).de
 
 lazy val cassandra = project.in(file("cassandra")).settings(commonSettings: _*).dependsOn(bigtable)
 
-lazy val rocksdb = project.in(file("rocksdb")).settings(commonSettings: _*).dependsOn(kv)
-
 //lazy val index = project.in(file("index")).settings(nonPubishSettings: _*).dependsOn(bigtable, json, hbase % "test")
 
-lazy val unibase = project.in(file("unibase")).settings(commonSettings: _*).dependsOn(json, bigtable, snowflake % "test", accumulo % "test")
+lazy val unibase = project.in(file("unibase")).settings(commonSettings: _*).dependsOn(json, bigtable, kv, snowflake % "test", accumulo % "test")
 
 lazy val narwhal = project.in(file("narwhal")).settings(commonSettings: _*).dependsOn(unibase, hbase)
 

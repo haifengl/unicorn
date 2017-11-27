@@ -30,7 +30,7 @@ package object kv {
   implicit def unboxByteArray(x: ByteArray) = x.bytes
   implicit def string2Bytes(x: String) = x.getBytes(UTF8)
   implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(UTF8))
-
+/*
   /** Helper function convert ByteBuffer to Array[Byte]. */
   implicit def byteBuffer2ArrayByte(buffer: ByteBuffer): Array[Byte] = {
     val bytes = new Array[Byte](buffer.position)
@@ -38,7 +38,7 @@ package object kv {
     buffer.get(bytes)
     bytes
   }
-
+*/
   /** Byte array ordering */
   def compareByteArray(x: Array[Byte], y: Array[Byte]): Int = {
     val n = Math.min(x.length, y.length)

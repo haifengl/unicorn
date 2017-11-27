@@ -33,7 +33,7 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class HBase(config: Configuration) extends Database[HBaseTable] {
+class HBase(config: Configuration) extends BigTableDatabase[HBaseTable] {
   val connection = ConnectionFactory.createConnection(config)
   val admin = connection.getAdmin
 

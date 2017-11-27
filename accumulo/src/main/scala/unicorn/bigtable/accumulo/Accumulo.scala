@@ -29,7 +29,7 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class Accumulo(val connector: Connector) extends Database[AccumuloTable] {
+class Accumulo(val connector: Connector) extends BigTableDatabase[AccumuloTable] {
   val tableOperations = connector.tableOperations
   override def close: Unit = () // Connector has no close method
 
