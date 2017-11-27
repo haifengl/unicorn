@@ -24,29 +24,16 @@ import java.nio.charset.Charset
   */
 package object bigtable {
 
-  val UTF8 = Charset.forName("UTF-8")
+  private[bigtable] val UTF8 = Charset.forName("UTF-8")
 
-  implicit def boxByteArray(x: Array[Byte]) = new ByteArray(x)
-  implicit def unboxByteArray(x: ByteArray) = x.bytes
-  implicit def string2Bytes(x: String) = x.getBytes(UTF8)
-  implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(UTF8))
+  private[bigtable] implicit def string2Bytes(x: String) = x.getBytes(UTF8)
+  private[bigtable] implicit def stringSeq2ByteArray(x: Seq[String]) = x.map(_.getBytes(UTF8))
 
   /** Helper function convert ByteBuffer to Array[Byte]. */
-  implicit def byteBuffer2ArrayByte(buffer: ByteBuffer): Array[Byte] = {
+  private[bigtable] implicit def byteBuffer2ArrayByte(buffer: ByteBuffer): Array[Byte] = {
     val bytes = new Array[Byte](buffer.position)
     buffer.position(0)
     buffer.get(bytes)
     bytes
-  }
-
-  /** Byte array ordering */
-  def compareByteArray(x: Array[Byte], y: Array[Byte]): Int = {
-    val n = Math.min(x.length, y.length)
-    for (i <- 0 until n) {
-      val a: Int = x(i) & 0xFF
-      val b: Int = y(i) & 0xFF
-      if (a != b) return a - b
-    }
-    x.length - y.length
   }
 }

@@ -29,7 +29,14 @@ trait KeyValueStore extends AutoCloseable {
   def apply(name: String): Keyspace
 
   /** Creates a keyspace/table.
-    * @param name the name of table.
+    * @param name the name of keyspace.
+    */
+  def create(name: String): Unit = {
+    create(name, new Properties())
+  }
+
+  /** Creates a keyspace/table.
+    * @param name the name of keyspace.
     * @param props table configurations.
     */
   def create(name: String, props: Properties): Unit

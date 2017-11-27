@@ -29,7 +29,7 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class Accumulo(val connector: Connector) extends Database[AccumuloTable] {
+class Accumulo(val connector: Connector) extends Database {
   val tableOperations = connector.tableOperations
   override def close: Unit = () // Connector has no close method
 
@@ -41,7 +41,7 @@ class Accumulo(val connector: Connector) extends Database[AccumuloTable] {
     connector.tableOperations.list.asScala.toSet
   }
 
-  override def createTable(name: String, props: Properties, families: String*): AccumuloTable = {
+  override def create(name: String, props: Properties, families: String*): Unit = {
     if (connector.tableOperations.exists(name))
       throw new IllegalStateException(s"Creates Table $name, which already exists")
 
@@ -57,25 +57,24 @@ class Accumulo(val connector: Connector) extends Database[AccumuloTable] {
     }.toMap
 
     tableOperations.setLocalityGroups(name, localityGroups.asJava)
-    apply(name)
   }
   
-  override def dropTable(name: String): Unit = {
+  override def drop(name: String): Unit = {
     if (!connector.tableOperations.exists(name))
       throw new IllegalStateException(s"Drop Table $name, which does not exists")
 
     tableOperations.delete(name)
   }
 
-  override def truncateTable(name: String): Unit = {
+  override def truncate(name: String): Unit = {
     tableOperations.deleteRows(name, null, null)
   }
 
-  override def tableExists(name: String): Boolean = {
+  override def exists(name: String): Boolean = {
     tableOperations.exists(name)
   }
 
-  override def compactTable(name: String): Unit = {
+  override def compact(name: String): Unit = {
     tableOperations.compact(name, null, null, true, false)
   }
 }

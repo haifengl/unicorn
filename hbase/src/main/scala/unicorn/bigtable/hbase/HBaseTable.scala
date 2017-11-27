@@ -211,7 +211,7 @@ class HBaseTable(val db: HBase, val name: String) extends OrderedBigTableWithFil
   }
 
   def prefixColumnScan(row: Array[Byte], family: String, prefix: Seq[Array[Byte]]): IntraRowScanner = {
-    val scan = newColumnPrefixScan(row, family, prefix.map(_.bytes), 100)
+    val scan = newColumnPrefixScan(row, family, prefix, 100)
     new HBaseColumnScanner(table.getScanner(scan))
   }
 

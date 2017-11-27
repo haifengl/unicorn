@@ -37,13 +37,13 @@ class CassandraSpec extends Specification with BeforeAfterAll {
     val props = new Properties
     props.put("class", "org.apache.cassandra.locator.SimpleStrategy")
     props.put("replication_factor", "1")
-    cassandra.createTable(tableName, props, "cf1", "cf2")
+    cassandra.create(tableName, props, "cf1", "cf2")
     table = cassandra(tableName)
   }
 
   override def afterAll = {
     if (table != null) table.close
-    cassandra.dropTable(tableName)
+    cassandra.drop(tableName)
   }
 
   "Cassandra" should {

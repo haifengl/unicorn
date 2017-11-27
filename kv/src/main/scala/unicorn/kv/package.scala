@@ -24,7 +24,7 @@ import java.nio.charset.Charset
   */
 package object kv {
 
-  val UTF8 = Charset.forName("UTF-8")
+  private[kv] val UTF8 = Charset.forName("UTF-8")
 
   implicit def boxByteArray(x: Array[Byte]) = new ByteArray(x)
   implicit def unboxByteArray(x: ByteArray) = x.bytes

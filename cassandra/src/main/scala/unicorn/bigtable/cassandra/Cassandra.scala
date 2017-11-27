@@ -30,7 +30,7 @@ import unicorn.bigtable._
   *
   * @author Haifeng Li
   */
-class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] {
+class Cassandra(transport: TFramedTransport) extends Database {
   private lazy val logger = Logger(getClass)
 
   val protocol = new TBinaryProtocol(transport)
@@ -51,14 +51,14 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] {
   }
 
   /** Create a table with default NetworkTopologyStrategy placement strategy. */
-  override def createTable(name: String, families: String*): CassandraTable = {
+  override def create(name: String, families: String*): Unit = {
     val props = new Properties
     props.put("class", "org.apache.cassandra.locator.NetworkTopologyStrategy")
     props.put("replication_factor", "3")
-    createTable(name, props, families: _*)
+    create(name, props, families: _*)
   }
 
-  override def createTable(name: String, props: Properties, families: String*): CassandraTable = {
+  override def create(name: String, props: Properties, families: String*): Unit = {
     val replicationStrategy = props.getProperty("class")
     val replicationOptions = props.stringPropertyNames.asScala.filter(_ != "class").map { p => (p, props.getProperty(p)) }.toMap.asJava
     val keyspace = new KsDef
@@ -75,27 +75,26 @@ class Cassandra(transport: TFramedTransport) extends Database[CassandraTable] {
     
     val schemaVersion = client.system_add_keyspace(keyspace)
     logger.info("create table {}: {}", name, schemaVersion)
-    apply(name)
   }
   
-  override def dropTable(name: String): Unit = {
+  override def drop(name: String): Unit = {
     client.system_drop_keyspace(name)
   }
 
-  override def truncateTable(name: String): Unit = {
+  override def truncate(name: String): Unit = {
     client.describe_keyspace(name).getCf_defs.asScala.foreach { cf =>
       client.truncate(cf.getName)
     }
   }
 
-  override def tableExists(name: String): Boolean = {
+  override def exists(name: String): Boolean = {
     client.describe_keyspace(name) != null
   }
 
   /** Cassandra client API doesn't support compaction.
     * This is actually a nop.
     */
-  override def compactTable(name: String): Unit = {
+  override def compact(name: String): Unit = {
     // fail silently
     logger.warn("Cassandra client API doesn't support compaction")
   }

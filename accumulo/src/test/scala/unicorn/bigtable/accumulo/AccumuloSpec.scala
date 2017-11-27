@@ -32,13 +32,13 @@ class AccumuloSpec extends Specification with BeforeAfterAll {
   var table: AccumuloTable = null
 
   override def beforeAll = {
-    accumulo.createTable(tableName, "cf1", "cf2")
+    accumulo.create(tableName, "cf1", "cf2")
     table = accumulo(tableName)
   }
 
   override def afterAll = {
     if (table != null) table.close
-    accumulo.dropTable(tableName)
+    accumulo.drop(tableName)
   }
 
   "Accumulo" should {

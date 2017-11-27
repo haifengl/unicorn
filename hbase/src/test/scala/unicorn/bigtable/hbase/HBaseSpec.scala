@@ -34,13 +34,13 @@ class HBaseSpec extends Specification with BeforeAfterAll {
   var table: HBaseTable = null
 
   override def beforeAll = {
-    hbase.createTable(tableName, "cf1", "cf2")
+    hbase.create(tableName, "cf1", "cf2")
     table = hbase(tableName)
   }
 
   override def afterAll = {
     if (table != null) table.close
-    hbase.dropTable(tableName)
+    hbase.drop(tableName)
   }
 
   "HBase" should {

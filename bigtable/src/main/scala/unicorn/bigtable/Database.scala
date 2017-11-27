@@ -22,11 +22,11 @@ import java.util.Properties
   *
   * @author Haifeng Li
   */
-trait Database[+T <: BigTable] extends AutoCloseable {
+trait Database extends AutoCloseable {
   /** Returns a table.
     * @param name the name of table.
     */
-  def apply(name: String): T
+  def apply(name: String): BigTable
 
   /** Returns the list of tables. */
   def tables: Set[String]
@@ -39,8 +39,8 @@ trait Database[+T <: BigTable] extends AutoCloseable {
     *   In some NoSQL solutions (e.g. HBase), column families are static
     *   and should be created when creating the table.
     */
-  def createTable(name: String, families: String*): T = {
-    createTable(name, new Properties(), families: _*)
+  def create(name: String, families: String*): Unit = {
+    create(name, new Properties(), families: _*)
   }
 
   /** Creates a table.
@@ -52,25 +52,25 @@ trait Database[+T <: BigTable] extends AutoCloseable {
     *   In some NoSQL solutions (e.g. HBase), column families are static
     *   and should be created when creating the table.
     */
-  def createTable(name: String, props: Properties, families: String*): T
+  def create(name: String, props: Properties, families: String*): Unit
 
   /** Truncates a table
     * @param name the name of table.
     */
-  def truncateTable(name: String): Unit
+  def truncate(name: String): Unit
 
   /** Drops a table.
     * @param name the name of table.
     */
-  def dropTable(name: String): Unit
+  def drop(name: String): Unit
 
   /** Tests if a table exists.
     * @param name the name of table.
     */
-  def tableExists(name: String): Boolean
+  def exists(name: String): Boolean
 
   /** Major compacts a table. Asynchronous operation.
     * @param name the name of table.
     */
-  def compactTable(name: String): Unit
+  def compact(name: String): Unit
 }
