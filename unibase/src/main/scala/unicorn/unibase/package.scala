@@ -101,7 +101,7 @@ package object unibase {
   private[unibase] val POSITIVE_INFINITY = Array(0x23.toByte)
   private[unibase] val NaN               = Array(0x25.toByte)
 
-  private[unibase] val TABLE_TYPE_DRAWER     = "DRAWER"
+  private[unibase] val TABLE_TYPE_DOCUMENTS  = "DOCUMENTS"
   private[unibase] val TABLE_TYPE_TABLE      = "TABLE"
   private[unibase] val TABLE_TYPE_GRAPH      = "GRAPH"
   private[unibase] val TABLE_TYPE_INDEX      = "INDEX"

@@ -23,7 +23,7 @@ import unicorn.json._
   *
   * @author Haifeng Li
   */
-trait FindOps extends ScanOps {
+trait FindOps {
   val index: Seq[Index]
 
   /** Searches the table.

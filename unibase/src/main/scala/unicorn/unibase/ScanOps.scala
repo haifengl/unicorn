@@ -27,23 +27,22 @@ import unicorn.kv._
 trait KeyspaceScanOps {
   val table: OrderedKeyspace
   val rowkey: RowKey
-  val serializer = new JsonSerializer()
 
   /** Scan the whole table. */
-  def scan: Iterator[JsObject] = {
-    scan(table.scan)
+  def scan: Iterator[KeyValue] = {
+    table.scan
   }
 
   /** Scan the the rows whose key starts with the given prefix. */
-  def scan(prefix: Key): Iterator[JsObject] = {
-    scan(table.scan(rowkey(prefix)))
+  def scan(prefix: Key): Iterator[KeyValue] = {
+    table.scan(rowkey(prefix))
   }
 
   /** Scan the the rows in the given range.
     * @param start row to start scanner at or after (inclusive)
     * @param end row to stop scanner before (exclusive)
     */
-  def scan(start: Key, end: Key): Iterator[JsObject] = {
+  def scan(start: Key, end: Key): Iterator[KeyValue] = {
     val startKey = rowkey(start)
     val endKey = rowkey(end)
 
@@ -52,13 +51,9 @@ trait KeyspaceScanOps {
       throw new IllegalArgumentException("Start and end keys are the same")
 
     if (c < 0)
-      scan(table.scan(startKey, endKey))
+      table.scan(startKey, endKey)
     else
-      scan(table.scan(endKey, startKey))
-  }
-
-  private def scan(it: Iterator[KeyValue]): Iterator[JsObject] = {
-    it.map { kv => serializer.deserialize(kv.value).asInstanceOf[JsObject] }
+      table.scan(endKey, startKey)
   }
 }
 
@@ -71,20 +66,20 @@ trait BigTableScanOps {
   val rowkey: RowKey
 
   /** Scan the whole table. */
-  def scan(fields: Seq[String]): Iterator[JsObject] = {
-    scan(table.scan(DocumentColumnFamily, fields))
+  def scan(fields: Seq[String]): RowIterator = {
+    table.scan(DocumentColumnFamily, fields)
   }
 
   /** Scan the the rows whose key starts with the given prefix. */
-  def scan(prefix: Key, fields: String*): Iterator[JsObject] = {
-    scan(table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields))
+  def scan(prefix: Key, fields: String*): RowIterator = {
+    table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields)
   }
 
   /** Scan the the rows in the given range.
     * @param start row to start scanner at or after (inclusive)
     * @param end row to stop scanner before (exclusive)
     */
-  def scan(start: Key, end: Key, fields: String*): Iterator[JsObject] = {
+  def scan(start: Key, end: Key, fields: String*): RowIterator = {
     val startKey = rowkey(start)
     val endKey = rowkey(end)
 
@@ -93,18 +88,9 @@ trait BigTableScanOps {
       throw new IllegalArgumentException("Start and end keys are the same")
 
     if (c < 0)
-      scan(table.scan(startKey, endKey, DocumentColumnFamily, fields))
+      table.scan(startKey, endKey, DocumentColumnFamily, fields)
     else
-      scan(table.scan(endKey, startKey, DocumentColumnFamily, fields))
-  }
-
-  private def scan(rows: RowIterator): Iterator[JsObject] = {
-    if (this.isInstanceOf[Table])
-      new TableIterator(rows)
-    else if (this.isInstanceOf[Documents])
-      new SimpleDocumentIterator(rows)
-    else
-      throw new IllegalStateException("Unsupported Scan table type: " + getClass)
+      table.scan(endKey, startKey, DocumentColumnFamily, fields)
   }
 }
 

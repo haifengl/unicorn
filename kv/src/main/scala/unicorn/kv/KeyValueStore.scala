@@ -22,11 +22,11 @@ import java.util.Properties
   *
   * @author Haifeng Li
   */
-trait KeyValueStore extends AutoCloseable {
+trait KeyValueStore[+T <: Keyspace] extends AutoCloseable {
   /** Returns a keyspace/table.
     * @param name the name of keyspace.
     */
-  def apply(name: String): Keyspace
+  def apply(name: String): T
 
   /** Creates a keyspace/table.
     * @param name the name of keyspace.
@@ -45,4 +45,12 @@ trait KeyValueStore extends AutoCloseable {
     * @param name the name of keyspace.
     */
   def drop(name: String): Unit
+
+  /** Returns the list of tables. */
+  def tables: Set[String]
+
+  /** Tests if a table exists.
+    * @param name the name of table.
+    */
+  def exists(name: String): Boolean
 }

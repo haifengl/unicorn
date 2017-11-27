@@ -17,7 +17,9 @@
 package unicorn.unibase.graph
 
 import org.apache.hadoop.hbase.util.{Order, OrderedBytes, SimplePositionedMutableByteRange}
-import unicorn.bigtable.{BigTable, RowScan}
+import unicorn.bigtable.OrderedBigTable
+import unicorn.json.JsonSerializer
+import unicorn.kv.OrderedKeyspace
 import unicorn.unibase._
 
 /** A knowledge graph or semantic network, is a graph that represents semantic
@@ -63,8 +65,40 @@ object Triple {
   }
 }
 
-class SemanticGraph(val table: BigTable with RowScan) extends GraphLike[String, Entity, Triple] {
-  override def key(edge: Triple): Array[Byte] = {
+trait SemanticGraph extends GraphLike[String, Entity, Entity, Triple] {
+  override def apply(vertex: String): Option[Entity] = {
+    if (edges(vertex).isEmpty) None else Some(Entity(vertex))
+  }
+
+  override def apply(vertex: Entity): Option[Entity] = {
+    if (edges(vertex).isEmpty) None else Some(vertex)
+  }
+
+  override def edges(vertex: String): Iterator[Triple] = {
+    edges(StringKey(vertex))
+  }
+
+  override def edges(vertex: Entity): Iterator[Triple] = {
+    edges(vertex.key)
+  }
+
+  override def edges(vertex: String, `type`: String): Iterator[Triple] = {
+    val prefix = CompositeKey(StringKey(vertex), StringKey(`type`))
+    edges(prefix)
+  }
+
+  override def edges(vertex: Entity, `type`: String): Iterator[Triple] = {
+    val prefix = CompositeKey(StringKey(vertex.id), StringKey(`type`))
+    edges(prefix)
+  }
+
+  private[unibase] def edges(prefix: Key): Iterator[Triple]
+
+  override def add(edge: Triple): Unit
+
+  override def delete(edge: Triple): Unit
+
+  private[unibase] def key(edge: Triple): Array[Byte] = {
     val range = new SimplePositionedMutableByteRange(1024)
     OrderedBytes.encodeString(range, edge.subject.id, Order.ASCENDING)
     OrderedBytes.encodeString(range, edge.predicate, Order.ASCENDING)
@@ -72,11 +106,44 @@ class SemanticGraph(val table: BigTable with RowScan) extends GraphLike[String, 
     range.getBytes.slice(0, range.getPosition)
   }
 
-  override def decode(key: Array[Byte], value: Array[Byte]): Triple = {
+  private[unibase] def decode(key: Array[Byte], value: Array[Byte]): Triple = {
     val range = new SimplePositionedMutableByteRange(key)
     val subject = OrderedBytes.decodeString(range)
     val predicate = OrderedBytes.decodeString(range)
     val `object` = OrderedBytes.decodeString(range)
     Triple(subject, predicate, `object`)
+  }
+}
+
+class KeyValueSemanticGraph(val table: OrderedKeyspace) extends SemanticGraph {
+  private[unibase] def edges(prefix: Key): Iterator[Triple] = {
+    table.scan(RowKey(prefix)).map { kv =>
+      decode(kv.key, kv.value)
+    }
+  }
+
+  override def add(edge: Triple): Unit = {
+    table(key(edge)) = JsonSerializer.undefined
+  }
+
+  override def delete(edge: Triple): Unit = {
+    table.delete(key(edge))
+  }
+}
+
+class BigTableSemanticGraph(val table: OrderedBigTable) extends SemanticGraph {
+  private[unibase] def edges(prefix: Key): Iterator[Triple] = {
+    table.scanPrefix(RowKey(prefix), DocumentColumnFamily).map { row =>
+      val column = row.families(0).columns(0)
+      decode(row.key, column.value)
+    }
+  }
+
+  override def add(edge: Triple): Unit = {
+    table(key(edge), DocumentColumnFamily, DocumentColumn) = JsonSerializer.undefined
+  }
+
+  override def delete(edge: Triple): Unit = {
+    table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
   }
 }

@@ -31,7 +31,7 @@ import unicorn.kv.KeyValueStore
   *
   * @author Haifeng Li
   */
-class RocksDB(val path: String) extends KeyValueStore {
+class RocksDB(val path: String) extends KeyValueStore[Rockspace] {
   val dir = new File(path)
   require(dir.exists, s"Directory $path doesn't exist")
 
@@ -70,6 +70,14 @@ class RocksDB(val path: String) extends KeyValueStore {
         FileVisitResult.CONTINUE
       }
     })
+  }
+
+  override def tables: Set[String] = {
+    new File(path).list().toSet
+  }
+
+  override def exists(name: String): Boolean = {
+    new File(s"$path/$name").exists()
   }
 
   def compact(name: String): Unit = {

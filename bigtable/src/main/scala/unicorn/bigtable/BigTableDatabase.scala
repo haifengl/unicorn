@@ -28,9 +28,6 @@ trait BigTableDatabase[+T <: BigTable] extends AutoCloseable {
     */
   def apply(name: String): T
 
-  /** Returns the list of tables. */
-  def tables: Set[String]
-
   /** Creates a table.
     * @param name the name of table.
     * @param families the column families in the table. A column family name
@@ -63,6 +60,9 @@ trait BigTableDatabase[+T <: BigTable] extends AutoCloseable {
     * @param name the name of table.
     */
   def drop(name: String): Unit
+
+  /** Returns the list of tables. */
+  def tables: Set[String]
 
   /** Tests if a table exists.
     * @param name the name of table.

@@ -18,21 +18,33 @@ package unicorn.unibase
 
 import unicorn.bigtable._
 import unicorn.json._
+import unicorn.kv._
+import unicorn.unibase.graph._
 
 /** Extending Cabinet, a Unibase supports the data models that require scan operations.
   *
   * @author Haifeng Li
   */
-class Unibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends Cabinet {
-  //import unicorn.unibase.graph.{KnowledgeGraphOSP, KnowledgeGraphPOS, KnowledgeGraphSPO}
-/*
-  /** Returns a document table.
-    * @param name The name of table.
+trait Unibase extends Cabinet {
+  /** Returns a semantic graph
+    *
+    * @param name The name of graph.
     */
-  override def apply(name: String): Table = {
-    new Table(db(name), TableMeta(db, name))
-  }
-  */
+  def semanticGraph(name: String): SemanticGraph
+
+  /** Creates a semantic graph.
+    * @param name the name of graph.
+    */
+  def createSemanticGraph(name: String): Unit
+
+  /*
+    /** Returns a document table.
+      * @param name The name of table.
+      */
+    override def apply(name: String): Table = {
+      new Table(db(name), TableMeta(db, name))
+    }
+    */
 /*
   /** Creates a knowledge graph table.
     * @param name the name of graph.
@@ -65,7 +77,37 @@ class Unibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends Cabinet {
 }
 
 object Unibase {
-  def apply[T <: OrderedBigTable](db: BigTableDatabase[T]): Unibase[T] = {
-    new Unibase[T](db)
+  def apply[T <: OrderedKeyspace](db: KeyValueStore[T]): Unibase = {
+    new KeyValueUnibase[T](db)
+  }
+
+  def apply[T <: OrderedBigTable](db: BigTableDatabase[T]): Unibase = {
+    new BigTableUnibase[T](db)
+  }
+}
+
+class KeyValueUnibase[+T <: OrderedKeyspace](db: KeyValueStore[T]) extends Unibase {
+  override def semanticGraph(name: String): SemanticGraph = {
+    new KeyValueSemanticGraph(db(name))
+  }
+
+  /** Creates a semantic graph.
+    * @param name the name of graph.
+    */
+  override def createSemanticGraph(name: String): Unit = {
+    db.create(name)
+  }
+}
+
+class BigTableUnibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends Unibase {
+  override def semanticGraph(name: String): SemanticGraph = {
+    new BigTableSemanticGraph(db(name))
+  }
+
+  /** Creates a semantic graph.
+    * @param name the name of graph.
+    */
+  override def createSemanticGraph(name: String): Unit = {
+    db.create(name)
   }
 }
