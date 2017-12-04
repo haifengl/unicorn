@@ -16,17 +16,17 @@
 
 package unicorn.unibase.graph
 
+import unicorn.unibase.Key
+
 /** Graph edge template.
-  *
-  * @tparam V the user type of the vertices of this edge.
   *
   * @author Haifeng Li
   */
-trait EdgeLike[T, V <: VertexId[T]] {
+trait EdgeLike {
   /** The end point of this edge. */
-  val from: V
+  val from: Key
   /** The end point of this edge. */
-  val to: V
+  val to: Key
 }
 /*
 case class Edge[T, V <: VertexId[T]](val from: V, val to: V) extends EdgeLike[T, V]

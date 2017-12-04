@@ -29,7 +29,7 @@ package unicorn.unibase.graph
   *
   * @author Haifeng Li
   */
-class SimpleTraveler[T, VI <: VertexId[T], V <: VertexId[T], E <: EdgeLike[T, V]](val graph: GraphLike[T, VI, V, E], val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler[T, VI, V, E] {
+class SimpleTraveler[V <: VertexLike, E <: EdgeLike](val graph: GraphLike[V, E], val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler[V, E] {
   /** The color mark if a vertex was already visited. */
   private val mark = collection.mutable.Map[V, VertexColor]().withDefaultValue(White)
 

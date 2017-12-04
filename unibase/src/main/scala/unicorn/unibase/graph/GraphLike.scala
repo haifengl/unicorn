@@ -16,6 +16,8 @@
 
 package unicorn.unibase.graph
 
+import unicorn.unibase.Key
+
 /** Graphs are mathematical structures used to model pairwise relations
   * between objects. A graph is made up of vertices (nodes) which are
   * connected by edges (arcs or lines). A graph may be undirected, meaning
@@ -32,25 +34,13 @@ package unicorn.unibase.graph
   *
   * @author Haifeng Li
   */
-trait GraphLike[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]] {
+trait GraphLike[V <: VertexLike, E <: EdgeLike] {
 
   /** Gets a vertex. */
-  def apply(vertex: T): Option[V]
-
-  /** Gets a vertex. */
-  def apply(vertex: VI): Option[V]
-
-  /** Returns the edges of a given vertex. */
-  def edges(vertex: T): Iterator[E]
-
-  /** Returns the edges of a given vertex. */
-  def edges(vertex: VI): Iterator[E]
+  def apply(vertex: Key): Option[V]
 
   /** Returns the edges of given type. */
-  def edges(vertex: T, `type`: String): Iterator[E]
-
-  /** Returns the edges of given type. */
-  def edges(vertex: VI, `type`: String): Iterator[E]
+  def edges(vertex: Key, `type`: Option[String] = None): Iterator[E]
 
   /** Adds an edge. If the edge exists, the associated data will be overwritten. */
   def add(edge: E): Unit

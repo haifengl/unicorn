@@ -19,6 +19,7 @@ package unicorn.unibase.graph
 import scala.language.dynamics
 import org.apache.hadoop.hbase.util.{Order, OrderedBytes, SimplePositionedMutableByteRange}
 import unicorn.bigtable.OrderedBigTable
+import unicorn.kv.OrderedKeyspace
 import unicorn.json._
 import unicorn.unibase._
 
@@ -44,30 +45,16 @@ import unicorn.unibase._
   */
 
 /** Node/entity in property graph. */
-case class NodeId(id: ObjectId) extends VertexId[ObjectId] {
-  override def key: Key = ObjectIdKey(id)
+case class Node(id: Long, properties: JsObject) extends VertexLike {
+  override def key: Key = LongKey(id)
 }
 
-/** Node/entity in property graph. */
-case class Node(id: ObjectId, label: String, properties: JsObject) extends VertexLike[ObjectId] {
-  override def key: Key = ObjectIdKey(id)
-}
-
-/** A semantic triple, or simply triple, is the atomic data entity in the
-  * Resource Description Framework (RDF) data model. A triple is a set of
-  * three entities that codifies a statement about semantic data in the form
-  * of subject–predicate–object expressions. For example,
-  * "The sky has the color blue", consist of a subject ("the sky"),
-  * a predicate ("has the color"), and an object ("blue").
-  * From this basic structure, triples can be composed into more complex
-  * models, by using triples as objects or subjects of other triples.
-  */
 /** A graph edge with relationship label.
   * Besides, the relationship may have optional properties.
   *
   * @author Haifeng Li
   */
-case class Relationship(override val from: Node, override val to: Node, val label: String, val properties: JsValue = JsUndefined) extends EdgeLike[ObjectId, Node] with Dynamic {
+case class Relationship(override val from: LongKey, val label: String, override val to: LongKey, val properties: JsValue = JsUndefined) extends EdgeLike with Dynamic {
 
   override def toString = {
     if (properties != JsUndefined)
@@ -85,73 +72,113 @@ case class Relationship(override val from: Node, override val to: Node, val labe
   def selectDynamic(property: String): JsValue = apply(property)
 }
 
-class PropertyGraph(val table: OrderedBigTable) extends GraphLike[ObjectId, NodeId, Node, Relationship] {
-  override def apply(vertex: ObjectId): Option[Node] = {
-    if (edges(vertex).isEmpty) None else Some(Entity(vertex))
+trait PropertyGraph extends GraphLike[Node, Relationship] {
+  private[unibase] val serializer = new JsonSerializer
+
+  /** Adds a node. */
+  def add(node: Node): Unit
+
+  /** Deletes a node. */
+  def delete(node: Node): Unit
+
+  private[unibase] def prefix(vertex: Key, `type`: Option[String]): Array[Byte] = {
+    if (!vertex.isInstanceOf[LongKey])
+      throw new IllegalArgumentException("PropertyGraph vertex key must be of Long")
+
+    val range = new SimplePositionedMutableByteRange(128)
+    OrderedBytes.encodeNumeric(range, vertex.asInstanceOf[LongKey].key, Order.ASCENDING)
+    if (`type`.isDefined)
+      OrderedBytes.encodeString(range, `type`.get, Order.ASCENDING)
+    range.getBytes.slice(0, range.getPosition)
   }
 
-  override def apply(vertex: NodeId): Option[Node] = {
-    if (edges(vertex).isEmpty) None else Some(vertex)
+  private[unibase] def key(node: Long): Array[Byte] = {
+    val range = new SimplePositionedMutableByteRange(8)
+    OrderedBytes.encodeNumeric(range, node, Order.ASCENDING)
+    range.getBytes.slice(0, range.getPosition)
   }
 
-  override def edges(vertex: ObjectId): Iterator[Relationship] = {
-    edges(StringKey(vertex))
+  private[unibase] def key(edge: Relationship): Array[Byte] = {
+    val range = new SimplePositionedMutableByteRange(128)
+    OrderedBytes.encodeNumeric(range, edge.from.asInstanceOf[LongKey].key, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.label, Order.ASCENDING)
+    OrderedBytes.encodeNumeric(range, edge.to.asInstanceOf[LongKey].key, Order.ASCENDING)
+    range.getBytes.slice(0, range.getPosition)
   }
 
-  override def edges(vertex: NodeId): Iterator[Relationship] = {
-    edges(vertex.key)
+  private[unibase] def decode(key: Array[Byte], value: Array[Byte]): Relationship = {
+    val range = new SimplePositionedMutableByteRange(key)
+    val from = OrderedBytes.decodeNumericAsLong(range)
+    val label = OrderedBytes.decodeString(range)
+    val to = OrderedBytes.decodeNumericAsLong(range)
+    val properties = serializer.deserialize(value)
+    Relationship(from, label, to, properties)
+  }
+}
+
+class KeyValuePropertyGraph(val table: OrderedKeyspace) extends PropertyGraph {
+  override def apply(vertex: Key): Option[Node] = {
+    if (!vertex.isInstanceOf[LongKey])
+      throw new IllegalArgumentException("PropertyGraph vertex key must be of Long")
+
+    val id = vertex.asInstanceOf[LongKey].key
+    val bytes = table(key(id))
+    bytes.map(serializer.deserialize(_)).map { json => Node(id, json.asInstanceOf[JsObject]) }
   }
 
-  override def edges(vertex: ObjectId, `type`: String): Iterator[Relationship] = {
-    val prefix = CompositeKey(StringKey(vertex), StringKey(`type`))
-    edges(prefix)
+  override def edges(vertex: Key, `type`: Option[String]): Iterator[Relationship] = {
+    table.scan(prefix(vertex, `type`)).map { kv =>
+      decode(kv.key, kv.value)
+    }
   }
 
-  override def edges(vertex: NodeId, `type`: String): Iterator[Relationship] = {
-    val prefix = CompositeKey(StringKey(vertex.id), StringKey(`type`))
-    edges(prefix)
+  override def add(node: Node): Unit = {
+    table(key(node.id)) = serializer.serialize(node.properties)
   }
 
-  private def edges(prefix: Key): Iterator[Relationship] = {
-    table.scanPrefix(RowKey(prefix), DocumentColumnFamily).map { row =>
+  override def delete(node: Node): Unit = {
+    table.delete(key(node.id))
+  }
+
+  override def add(edge: Relationship): Unit = {
+    table(key(edge)) = serializer.serialize(edge.properies)
+  }
+
+  override def delete(edge: Relationship): Unit = {
+    table.delete(key(edge))
+  }
+}
+
+class BigTablePropertyGraph(val table: OrderedBigTable) extends PropertyGraph {
+  override def apply(vertex: Key): Option[Node] = {
+    if (!vertex.isInstanceOf[LongKey])
+      throw new IllegalArgumentException("PropertyGraph vertex key must be of Long")
+
+    val id = vertex.asInstanceOf[LongKey].key
+    val bytes = table(key(id), DocumentColumnFamily, DocumentColumn)
+    bytes.map(serializer.deserialize(_)).map { json => Node(id, json.asInstanceOf[JsObject]) }
+  }
+
+  override def edges(vertex: Key, `type`: Option[String]): Iterator[Relationship] = {
+    table.scanPrefix(prefix(vertex, `type`), DocumentColumnFamily).map { row =>
       val column = row.families(0).columns(0)
       decode(row.key, column.value)
     }
   }
 
-  def add(node: Node): Unit = {
-    table(key(edge), DocumentColumnFamily, DocumentColumn) = JsonSerializer.undefined
+  override def add(node: Node): Unit = {
+    table(key(node.id), DocumentColumnFamily, DocumentColumn) = serializer.serialize(node.properties)
   }
 
-  def delete(node: ObjectId): Unit = {
-    delete(NodeId(node))
-  }
-
-  def delete(node: NodeId): Unit = {
-    table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
+  override def delete(node: Node): Unit = {
+    table.delete(key(node.id), DocumentColumnFamily, DocumentColumn)
   }
 
   override def add(edge: Relationship): Unit = {
-    table(key(edge), DocumentColumnFamily, DocumentColumn) = JsonSerializer.undefined
+    table(key(edge), DocumentColumnFamily, DocumentColumn) = serializer.serialize(edge.properies)
   }
 
   override def delete(edge: Relationship): Unit = {
     table.delete(key(edge), DocumentColumnFamily, DocumentColumn)
-  }
-
-  private def key(edge: Triple): Array[Byte] = {
-    val range = new SimplePositionedMutableByteRange(1024)
-    OrderedBytes.encodeString(range, edge.subject.id, Order.ASCENDING)
-    OrderedBytes.encodeString(range, edge.predicate, Order.ASCENDING)
-    OrderedBytes.encodeString(range, edge.`object`.id, Order.ASCENDING)
-    range.getBytes.slice(0, range.getPosition)
-  }
-
-  private def decode(key: Array[Byte], value: Array[Byte]): Triple = {
-    val range = new SimplePositionedMutableByteRange(key)
-    val subject = OrderedBytes.decodeString(range)
-    val predicate = OrderedBytes.decodeString(range)
-    val `object` = OrderedBytes.decodeString(range)
-    Triple(subject, predicate, `object`)
   }
 }

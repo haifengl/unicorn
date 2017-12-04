@@ -55,12 +55,12 @@ case object Both extends Direction
   *
   * @author Haifeng Li
   */
-trait Traveler[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]] {
+trait Traveler[V <: VertexLike, E <: EdgeLike] {
   /** Returns the vertex of given ID. */
-  def apply(vertex: VI): V
+  def apply(vertex: V): V
 
   /** The color mark if a vertex was already visited. */
-  def color(vertex: VI): VertexColor
+  def color(vertex: V): VertexColor
 
   /** Visit a vertex during graph traversal.
     *
@@ -68,7 +68,7 @@ trait Traveler[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]] {
     * @param edge the incoming arc (None for starting vertex).
     * @param hops the number of hops from the starting vertex to this vertex.
     */
-  def visit(vertex: VI, edge: Option[E], hops: Int): Unit
+  def visit(vertex: V, edge: Option[E], hops: Int): Unit
 
   /** Returns an iterator of the neighbors and associated edges of a vertex.
     *
@@ -76,7 +76,7 @@ trait Traveler[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]] {
     * @param hops the number of hops from starting vertex, which may be used for early termination.
     * @return an iterator of the outgoing edges
     */
-  def neighbors(vertex: VI, hops: Int): Iterator[E]
+  def neighbors(vertex: V, hops: Int): Iterator[E]
 
   /** The weight of edge (e.g. shortest path search). */
   def weight(edge: E): Double

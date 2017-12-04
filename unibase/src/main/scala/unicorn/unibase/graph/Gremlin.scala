@@ -23,7 +23,7 @@ import unicorn.json.{JsArray, JsObject, JsValue}
   *
   * @author Haifeng Li
   */
-class Gremlin[T, VI <: VertexId[T], V <: VertexLike[T], E <: EdgeLike[T, VI]](val traveler: Traveler[T, VI, V, E]) {
+class Gremlin[V <: VertexLike, E <: EdgeLike](val traveler: Traveler[V, E]) {
   /*
   def v(id: Long): GremlinVertices = new GremlinVertices(traveler, Seq(id))
   def v(id: Array[Long]): GremlinVertices = new GremlinVertices(traveler, id)

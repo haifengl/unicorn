@@ -18,22 +18,14 @@ package unicorn.unibase.graph
 
 import unicorn.unibase.Key
 
-/** Graph vertex ID.
-  *
-  * @author Haifeng Li
-  */
-trait VertexId[T] {
-  /** Vertex ID. */
-  val id: T
-  /** Returns the row key of this vertex. */
-  def key: Key
-}
-
 /** Graph vertex template.
   *
   * @author Haifeng Li
   */
-trait VertexLike[T] extends VertexId[T]
+trait VertexLike  {
+  /** Returns the row key of this vertex. */
+  def key: Key
+}
 
 /*
 /** An abstract vertex has only a 64-bit ID.

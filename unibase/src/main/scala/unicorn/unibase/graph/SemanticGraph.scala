@@ -41,7 +41,7 @@ import unicorn.unibase._
   */
 
 /** Entity vertex in knowledge/semantic graph. */
-case class Entity(id: String) extends VertexLike[String] {
+case class Entity(id: String) extends VertexLike {
   override def key: Key = StringKey(id)
 }
 
@@ -54,55 +54,40 @@ case class Entity(id: String) extends VertexLike[String] {
   * From this basic structure, triples can be composed into more complex
   * models, by using triples as objects or subjects of other triples.
   */
-case class Triple(from: Entity, predicate: String, to: Entity) extends EdgeLike[String, Entity] {
+case class Triple(from: StringKey, predicate: String, to: StringKey) extends EdgeLike {
   def subject = from
   def `object` = to
+
+  override def toString = {
+    s"(${from.key} - [$predicate] -> ${to.key})"
+  }
+
 }
 
-object Triple {
-  def apply(subject: String, predicate: String, `object`: String): Triple = {
-    Triple(Entity(subject), predicate, Entity(`object`))
-  }
-}
+trait SemanticGraph extends GraphLike[Entity, Triple] {
+  override def apply(vertex: Key): Option[Entity] = {
+    if (!vertex.isInstanceOf[StringKey])
+      throw new IllegalArgumentException("SemanticGraph vertex key must be of String")
 
-trait SemanticGraph extends GraphLike[String, Entity, Entity, Triple] {
-  override def apply(vertex: String): Option[Entity] = {
-    if (edges(vertex).isEmpty) None else Some(Entity(vertex))
+    if (edges(vertex).isEmpty) None else Some(Entity(vertex.asInstanceOf[StringKey].key))
   }
 
-  override def apply(vertex: Entity): Option[Entity] = {
-    if (edges(vertex).isEmpty) None else Some(vertex)
+  private[unibase] def prefix(vertex: Key, `type`: Option[String]): Array[Byte] = {
+    if (!vertex.isInstanceOf[StringKey])
+      throw new IllegalArgumentException("SemanticGraph vertex key must be of String")
+
+    val range = new SimplePositionedMutableByteRange(1024)
+    OrderedBytes.encodeString(range, vertex.asInstanceOf[StringKey].key, Order.ASCENDING)
+    if (`type`.isDefined)
+      OrderedBytes.encodeString(range, `type`.get, Order.ASCENDING)
+    range.getBytes.slice(0, range.getPosition)
   }
-
-  override def edges(vertex: String): Iterator[Triple] = {
-    edges(StringKey(vertex))
-  }
-
-  override def edges(vertex: Entity): Iterator[Triple] = {
-    edges(vertex.key)
-  }
-
-  override def edges(vertex: String, `type`: String): Iterator[Triple] = {
-    val prefix = CompositeKey(StringKey(vertex), StringKey(`type`))
-    edges(prefix)
-  }
-
-  override def edges(vertex: Entity, `type`: String): Iterator[Triple] = {
-    val prefix = CompositeKey(StringKey(vertex.id), StringKey(`type`))
-    edges(prefix)
-  }
-
-  private[unibase] def edges(prefix: Key): Iterator[Triple]
-
-  override def add(edge: Triple): Unit
-
-  override def delete(edge: Triple): Unit
 
   private[unibase] def key(edge: Triple): Array[Byte] = {
     val range = new SimplePositionedMutableByteRange(1024)
-    OrderedBytes.encodeString(range, edge.subject.id, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.subject.key, Order.ASCENDING)
     OrderedBytes.encodeString(range, edge.predicate, Order.ASCENDING)
-    OrderedBytes.encodeString(range, edge.`object`.id, Order.ASCENDING)
+    OrderedBytes.encodeString(range, edge.`object`.key, Order.ASCENDING)
     range.getBytes.slice(0, range.getPosition)
   }
 
@@ -116,8 +101,8 @@ trait SemanticGraph extends GraphLike[String, Entity, Entity, Triple] {
 }
 
 class KeyValueSemanticGraph(val table: OrderedKeyspace) extends SemanticGraph {
-  private[unibase] def edges(prefix: Key): Iterator[Triple] = {
-    table.scan(RowKey(prefix)).map { kv =>
+  override def edges(vertex: Key, `type`: Option[String]): Iterator[Triple] = {
+    table.scan(prefix(vertex, `type`)).map { kv =>
       decode(kv.key, kv.value)
     }
   }
@@ -132,8 +117,8 @@ class KeyValueSemanticGraph(val table: OrderedKeyspace) extends SemanticGraph {
 }
 
 class BigTableSemanticGraph(val table: OrderedBigTable) extends SemanticGraph {
-  private[unibase] def edges(prefix: Key): Iterator[Triple] = {
-    table.scanPrefix(RowKey(prefix), DocumentColumnFamily).map { row =>
+  override def edges(vertex: Key, `type`: Option[String]): Iterator[Triple] = {
+    table.scanPrefix(prefix(vertex, `type`), DocumentColumnFamily).map { row =>
       val column = row.families(0).columns(0)
       decode(row.key, column.value)
     }
