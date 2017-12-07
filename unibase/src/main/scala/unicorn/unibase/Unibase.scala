@@ -86,7 +86,7 @@ object Unibase {
   }
 }
 
-class KeyValueUnibase[+T <: OrderedKeyspace](db: KeyValueStore[T]) extends Unibase {
+class KeyValueUnibase[+T <: OrderedKeyspace](db: KeyValueStore[T]) extends KeyValueCabinet[T](db) with Unibase {
   override def semanticGraph(name: String): SemanticGraph = {
     new KeyValueSemanticGraph(db(name))
   }
@@ -99,7 +99,7 @@ class KeyValueUnibase[+T <: OrderedKeyspace](db: KeyValueStore[T]) extends Uniba
   }
 }
 
-class BigTableUnibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends Unibase {
+class BigTableUnibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends BigTableCabinet[T](db) with Unibase {
   override def semanticGraph(name: String): SemanticGraph = {
     new BigTableSemanticGraph(db(name))
   }
