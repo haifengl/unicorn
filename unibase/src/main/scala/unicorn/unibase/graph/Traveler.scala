@@ -16,7 +16,7 @@
 
 package unicorn.unibase.graph
 
-import unicorn.json._
+import unicorn.unibase.Key
 
 /** Vertex color mark in a graph graversal. */
 sealed trait VertexColor
@@ -57,10 +57,10 @@ case object Both extends Direction
   */
 trait Traveler[V <: VertexLike, E <: EdgeLike] {
   /** Returns the vertex of given ID. */
-  def apply(vertex: V): V
+  def apply(vertex: Key): Option[V]
 
   /** The color mark if a vertex was already visited. */
-  def color(vertex: V): VertexColor
+  def color(vertex: Key): VertexColor
 
   /** Visit a vertex during graph traversal.
     *
@@ -68,18 +68,18 @@ trait Traveler[V <: VertexLike, E <: EdgeLike] {
     * @param edge the incoming arc (None for starting vertex).
     * @param hops the number of hops from the starting vertex to this vertex.
     */
-  def visit(vertex: V, edge: Option[E], hops: Int): Unit
+  def visit(vertex: Key, edge: Option[E], hops: Int): Unit
 
-  /** Returns an iterator of the neighbors and associated edges of a vertex.
+  /** Returns an iterator of the (outgoing) edges of a vertex.
     *
     * @param vertex the vertex on visiting.
     * @param hops the number of hops from starting vertex, which may be used for early termination.
     * @return an iterator of the outgoing edges
     */
-  def neighbors(vertex: V, hops: Int): Iterator[E]
+  def edges(vertex: Key, hops: Int): Iterator[E]
 
   /** The weight of edge (e.g. shortest path search). */
-  def weight(edge: E): Double
+  def weight(edge: E): Double = 1.0
 
   /** The future path-cost function in A* search, which is an admissible
     * "heuristic estimate" of the distance from the current vertex to the goal.

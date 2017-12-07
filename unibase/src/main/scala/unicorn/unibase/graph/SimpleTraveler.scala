@@ -16,25 +16,29 @@
 
 package unicorn.unibase.graph
 
+import unicorn.unibase.Key
+
 /** Simple graph visitor with cache management.
   * In DFS and BFS, the user should create a sub class overriding
   * the `apply` method, which is nop by default.
   *
   * @param graph The graph to visit.
-  * @param relationships Relationship of interest. Only neighbors with given
-  *                      relationship will be visited. Empty set means all
-  *                      relationships.
   * @param maxHops Maximum number of hops during graph traversal.
-  * @param direction Edges to follow in the traversal.
+  * @param p Optional filter on relationships of interest. Only
+  *          neighbors with given relationship will be visited.
   *
   * @author Haifeng Li
   */
-class SimpleTraveler[V <: VertexLike, E <: EdgeLike](val graph: GraphLike[V, E], val relationships: Set[String] = Set.empty, val maxHops: Int = 3, val direction: Direction = Outgoing) extends Traveler[V, E] {
+class SimpleTraveler[V <: VertexLike, E <: EdgeLike](val graph: GraphLike[V, E], val maxHops: Int = 5, val p: Option[E => Boolean]) extends Traveler[V, E] {
   /** The color mark if a vertex was already visited. */
-  private val mark = collection.mutable.Map[V, VertexColor]().withDefaultValue(White)
+  private val mark = collection.mutable.Map[Key, VertexColor]().withDefaultValue(White)
 
   /** The cache of vertices. */
-  private val cache = collection.mutable.Map[V, Seq[E]]()
+  private val cache = collection.mutable.Map[Key, Seq[E]]()
+
+  override def apply(vertex: Key): Option[V] = {
+    graph(vertex)
+  }
 
   /** User defined vertex visit function. The default implementation is nop.
     * The user should create a sub class overriding this method.
@@ -43,7 +47,7 @@ class SimpleTraveler[V <: VertexLike, E <: EdgeLike](val graph: GraphLike[V, E],
     * @param edge the incoming arc (None for starting vertex).
     * @param hops the number of hops from the starting vertex to this vertex.
     */
-  def apply(vertex: V, edge: Option[E], hops: Int): Unit = {
+  def apply(vertex: Key, edge: Option[E], hops: Int): Unit = {
 
   }
 
@@ -52,55 +56,25 @@ class SimpleTraveler[V <: VertexLike, E <: EdgeLike](val graph: GraphLike[V, E],
     mark.clear
     cache.clear
   }
-/*
-  override def vertex(id: Long): Vertex = {
-    cache.get(id) match {
-      case Some(node) => node
-      case None =>
-        val node = graph(id, direction)
-        cache(id) = node
-        node
-    }
-  }
 
-  override def vertex(key: String): Vertex = {
-    val id = idOf(key)
-    require(id.isDefined, s"Vertex $key doesn't exist")
-    vertex(id.get)
-  }
+  override def color(vertex: Key): VertexColor = mark(vertex)
 
-  /** Translates a vertex string key to 64 bit id. */
-  override def idOf(key: String): Option[Long] = {
-    graph.idOf(key)
-  }
-*/
-  override def color(vertex: V): VertexColor = mark(vertex)
-
-  override def visit(vertex: V, edge: Option[E], hops: Int): Unit = {
-    /*
+  override def visit(vertex: Key, edge: Option[E], hops: Int): Unit = {
     apply(vertex, edge, hops)
 
-    val black = vertex.neighbors.forall { neighbor =>
-      mark.contains(neighbor)
+    val black = graph.edges(vertex).forall { neighbor =>
+      mark.contains(neighbor.to)
     }
 
-    mark(vertex.id) = if (black) Black else Gray
-    */
+    mark(vertex) = if (black) Black else Gray
   }
 
-  override def neighbors(vertex: V, hops: Int): Iterator[E] = {
-    /*
+  override def edges(vertex: Key, hops: Int): Iterator[E] = {
     if (hops >= maxHops) return Seq.empty.iterator
 
-    val edges = if (relationships.isEmpty) vertex.edges
-    else vertex.edges.filter { edge =>
-      relationships.contains(edge.label)
-    }
-
-    edges.map { edge =>
-      val neighbor = if (edge.to != vertex.id) edge.to else edge.from
-      (neighbor, edge)
-    }.iterator
-    */
+    val edges = graph.edges(vertex)
+    if (p.isDefined) edges.filter(p.get) else edges
   }
+
+  override def weight(edge: E): Double = 1.0
 }
