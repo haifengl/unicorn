@@ -85,5 +85,5 @@ trait Traveler[V <: VertexLike, E <: EdgeLike] {
     * "heuristic estimate" of the distance from the current vertex to the goal.
     * Note that the heuristic function must be monotonic.
     */
-  def h(edge: E): Double = 1.0
+  def h(current: Key, goal: Key): Double = 1.0
 }

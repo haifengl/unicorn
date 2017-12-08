@@ -16,27 +16,27 @@
 
 package unicorn.unibase.graph
 
+import unicorn.unibase.Key
+
 /** Advanced graph operations.
   *
   * @author Haifeng Li
   */
-/*
 object GraphOps {
 
   type Path = List[EdgeLike]
 
   /** Depth-first search of graph.
-    * @param current the current vertex to visit
+    * @param vertex the current vertex to visit
     * @param edge optional incoming edge
     * @param traveler the graph traveler proxy.
     * @param hops the number of hops to reach this vertex from the starting vertex.
     */
-  private def dfs(current: Long, edge: Option[Edge], traveler: Traveler, hops: Int): Unit = {
-    val vertex = traveler.vertex(current)
+  private def dfs[V <: VertexLike, E <: EdgeLike](vertex: Key, edge: Option[E], traveler: Traveler[V, E], hops: Int): Unit = {
     traveler.visit(vertex, edge, hops)
-    traveler.neighbors(vertex, hops).foreach { case (neighbor, edge) =>
-      if (traveler.color(neighbor) == White)
-        dfs(neighbor, Some(edge), traveler, hops + 1)
+    traveler.edges(vertex, hops).foreach { case edge =>
+      if (traveler.color(edge.to) == White)
+        dfs(edge.to, Some(edge), traveler, hops + 1)
     }
   }
 
@@ -44,7 +44,7 @@ object GraphOps {
     * @param start the starting vertex
     * @param traveler the graph traveler proxy.
     */
-  def dfs(start: Long, traveler: Traveler): Unit = {
+  def dfs[V <: VertexLike, E <: EdgeLike](start: Key, traveler: Traveler[V, E]): Unit = {
     dfs(start, None, traveler, 0)
   }
 
@@ -52,26 +52,25 @@ object GraphOps {
     * @param start the start vertex to visit
     * @param traveler the graph traveler proxy.
     */
-  def bfs(start: Long, traveler: Traveler): Unit = {
-    val queue = collection.mutable.Queue[(Long, Option[Edge], Int)]()
+  def bfs[V <: VertexLike, E <: EdgeLike](start: Key, traveler: Traveler[V, E]): Unit = {
+    val queue = collection.mutable.Queue[(Key, Option[E], Int)]()
 
     queue.enqueue((start, None, 0))
 
     while (!queue.isEmpty) {
       val (vertex, edge, hops) = queue.dequeue
       if (traveler.color(vertex) == White) {
-        val node = traveler.vertex(vertex)
-        traveler.visit(node, edge, hops)
-        traveler.neighbors(node, hops).foreach { case (neighbor, edge) =>
-          queue.enqueue((neighbor, Some(edge), hops + 1))
+        traveler.visit(vertex, edge, hops)
+        traveler.edges(vertex, hops).foreach { case edge =>
+          queue.enqueue((edge.to, Some(edge), hops + 1))
         }
       }
     }
   }
 
   /** Helper ordering object in A* for priority queue. */
-  private object NodeOrdering extends scala.math.Ordering[(Long, Double, Int)] {
-    def compare(x: (Long, Double, Int), y: (Long, Double, Int)): Int = {
+  private object NodeOrdering extends scala.math.Ordering[(Key, Double, Int)] {
+    def compare(x: (Key, Double, Int), y: (Key, Double, Int)): Int = {
       x._2.compare(y._2)
     }
   }
@@ -83,16 +82,16 @@ object GraphOps {
     * @param traveler the graph traveler proxy.
     * @return       the path from start to goal
     */
-  def dijkstra(start: Long, goal: Long, traveler: Traveler): Path = {
+  def dijkstra[V <: VertexLike, E <: EdgeLike](start: Key, goal: Key, traveler: Traveler[V, E]): Path = {
 
-    val queue = new scala.collection.mutable.PriorityQueue[(Long, Double, Int)]()(NodeOrdering)
+    val queue = new scala.collection.mutable.PriorityQueue[(Key, Double, Int)]()(NodeOrdering)
     queue.enqueue((start, 0.0, 0))
 
-    val dist = scala.collection.mutable.Map[Long, Double]().withDefaultValue(Double.PositiveInfinity)
+    val dist = scala.collection.mutable.Map[Key, Double]().withDefaultValue(Double.PositiveInfinity)
     dist(start) = 0.0
 
     // The map of navigated vertices
-    val cameFrom = scala.collection.mutable.Map[Long, (Long, Edge)]()
+    val cameFrom = scala.collection.mutable.Map[Key, (Key, E)]()
 
     while (!queue.isEmpty) {
       val (current, distance, hops) = queue.dequeue
@@ -100,8 +99,8 @@ object GraphOps {
       if (current == goal)
         return reconstructPath(cameFrom, goal).reverse
 
-      val node = traveler.vertex(current)
-      traveler.neighbors(node, hops).foreach { case (neighbor, edge) =>
+      traveler.edges(current, hops).foreach { edge =>
+        val neighbor = edge.to
         val alt = distance + traveler.weight(edge)
         if (alt < dist(neighbor)) {
           dist(neighbor) = alt
@@ -122,30 +121,30 @@ object GraphOps {
     * @param goal   the goal vertex
     * @param traveler the graph traveler proxy.
     */
-  def astar(start: Long, goal: Long, traveler: AstarTraveler): Path = {
+  def astar[V <: VertexLike, E <: EdgeLike](start: Key, goal: Key, traveler: Traveler[V, E]): Path = {
     val guess = traveler.h(start, goal)
 
     // The queue to find vertex with lowest f score
     // Note that Scala priority queue maintains largest value on the top.
     // So we will use negative f score in the queue.
-    val openQueue = new scala.collection.mutable.PriorityQueue[(Long, Double, Int)]()(NodeOrdering)
+    val openQueue = new scala.collection.mutable.PriorityQueue[(Key, Double, Int)]()(NodeOrdering)
     openQueue.enqueue((start, -guess, 0))
 
     // The set of tentative vertices to be evaluated.
-    val openSet = scala.collection.mutable.Set[Long](start)
+    val openSet = scala.collection.mutable.Set[Key](start)
 
     // The set of vertices already evaluated.
-    val closedSet = scala.collection.mutable.Set[Long]()
+    val closedSet = scala.collection.mutable.Set[Key]()
 
     // The map of navigated vertices
-    val cameFrom = scala.collection.mutable.Map[Long, (Long, Edge)]()
+    val cameFrom = scala.collection.mutable.Map[Key, (Key, E)]()
 
     // Cost from start along best known path.
-    val gScore = scala.collection.mutable.Map[Long, Double]()
+    val gScore = scala.collection.mutable.Map[Key, Double]()
     gScore(start) = 0.0
 
     // Estimated total cost from start to goal through y.
-    val fScore = scala.collection.mutable.Map[Long, Double]()
+    val fScore = scala.collection.mutable.Map[Key, Double]()
     fScore(start) = guess
 
     while (!openQueue.isEmpty) {
@@ -156,11 +155,10 @@ object GraphOps {
 
       openSet.remove(current)
       closedSet.add(current)
-
-      val node = traveler.vertex(current)
-      traveler.neighbors(node, hops).foreach {
-        case (neighbor, _) if (closedSet.contains(neighbor)) => ()
-        case (neighbor, edge) =>
+      
+      traveler.edges(current, hops).foreach { edge =>
+        val neighbor = edge.to
+        if (!closedSet.contains(neighbor)) {
           val alt = gScore(current) + traveler.weight(edge)
 
           if (!openSet.contains(neighbor) || alt < gScore(neighbor)) {
@@ -173,6 +171,7 @@ object GraphOps {
               openQueue.enqueue((neighbor, f, hops + 1))
             }
           }
+        }
       }
     }
 
@@ -181,7 +180,7 @@ object GraphOps {
   }
 
   /** Reconstructs the A* search path. */
-  private def reconstructPath(cameFrom: scala.collection.mutable.Map[Long, (Long, Edge)], current: Long): Path = {
+  private def reconstructPath[E <: EdgeLike](cameFrom: scala.collection.mutable.Map[Key, (Key, E)], current: Key): Path = {
     if (cameFrom.contains(current)) {
       val (from, edge) = cameFrom(current)
       edge :: reconstructPath(cameFrom, from)
@@ -190,4 +189,3 @@ object GraphOps {
     }
   }
 }
-*/
