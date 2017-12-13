@@ -25,9 +25,7 @@ import unicorn.json.ObjectId
 /** Document key. Primitive key types are: Int, Long, Double, BigDecimal,
   * LocalDate, LocalDateTime, Timestamp, BSON Object ID, UUID, and Strings.
   * Composite key may have an arbitrary number of fields of any primitive type.
-  *
-  * Keep document keys as short as is reasonable such that they can still
-  * be useful for required data access.
+  * But it is better to keep document keys as short as reasonable.
   *
   * Document keys cannot be changed. The only way they can be "changed"
   * in a table is that the document is deleted and then re-inserted.

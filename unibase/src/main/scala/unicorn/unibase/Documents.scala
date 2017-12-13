@@ -80,15 +80,15 @@ class KeyValueDocuments(val table: Keyspace, val rowkey: RowKey) extends Documen
   }
 
   override def apply(key: Key): Option[JsObject] = {
-    apply(rowkey(key))
+    apply(rowkey.serialize(key))
   }
 
   override def upsert(doc: JsObject): Unit = {
-    table(rowkey(doc)) = serializer.serialize(doc)
+    table(rowkey.serialize(doc)) = serializer.serialize(doc)
   }
 
   override def delete(key: Key): Unit = {
-    table.delete(rowkey(key))
+    table.delete(rowkey.serialize(key))
   }
 }
 
@@ -112,14 +112,14 @@ class BigTableDocuments(val table: BigTable, val rowkey: RowKey) extends Documen
   }
 
   override def apply(key: Key): Option[JsObject] = {
-    apply(rowkey(key))
+    apply(rowkey.serialize(key))
   }
 
   override def upsert(doc: JsObject): Unit = {
-    table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
+    table(rowkey.serialize(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
   }
 
   override def delete(key: Key): Unit = {
-    table.delete(rowkey(key))
+    table.delete(rowkey.serialize(key))
   }
 }

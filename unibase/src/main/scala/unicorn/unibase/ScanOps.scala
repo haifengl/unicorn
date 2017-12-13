@@ -35,7 +35,7 @@ trait KeyspaceScanOps {
 
   /** Scan the the rows whose key starts with the given prefix. */
   def scan(prefix: Key): Iterator[KeyValue] = {
-    table.scan(rowkey(prefix))
+    table.scan(rowkey.serialize(prefix))
   }
 
   /** Scan the the rows in the given range.
@@ -43,8 +43,8 @@ trait KeyspaceScanOps {
     * @param end row to stop scanner before (exclusive)
     */
   def scan(start: Key, end: Key): Iterator[KeyValue] = {
-    val startKey = rowkey(start)
-    val endKey = rowkey(end)
+    val startKey = rowkey.serialize(start)
+    val endKey = rowkey.serialize(end)
 
     val c = compareByteArray(startKey, endKey)
     if (c == 0)
@@ -72,7 +72,7 @@ trait BigTableScanOps {
 
   /** Scan the the rows whose key starts with the given prefix. */
   def scan(prefix: Key, fields: String*): RowIterator = {
-    table.scanPrefix(rowkey(prefix), DocumentColumnFamily, fields)
+    table.scanPrefix(rowkey.serialize(prefix), DocumentColumnFamily, fields)
   }
 
   /** Scan the the rows in the given range.
@@ -80,8 +80,8 @@ trait BigTableScanOps {
     * @param end row to stop scanner before (exclusive)
     */
   def scan(start: Key, end: Key, fields: String*): RowIterator = {
-    val startKey = rowkey(start)
-    val endKey = rowkey(end)
+    val startKey = rowkey.serialize(start)
+    val endKey = rowkey.serialize(end)
 
     val c = compareByteArray(startKey, endKey)
     if (c == 0)

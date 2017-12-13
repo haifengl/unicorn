@@ -29,6 +29,7 @@ import unicorn.kv.{Keyspace, KeyValue, KeyValueStore}
   * @author Haifeng Li
   */
 trait Cabinet {
+  private[unibase] val metaTable: Documents
 
   /** Returns a document collection.
     * @param name The name of document collection.
@@ -41,7 +42,7 @@ trait Cabinet {
     *            If not specified, the "_id" field is used as the
     *            document key as in MongoDB.
     */
-  def createDocuments(name: String, key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit
+  def createDocuments(name: String, key: RowKey = RowKey(DefaultRowKeyField)): Unit
 
   /** Drops a table. */
   def drop(name: String): Unit
@@ -67,7 +68,7 @@ object Cabinet {
 
 class KeyValueCabinet[+T <: Keyspace](db: KeyValueStore[T]) extends Cabinet {
 
-  private lazy val metaTable = {
+  private[unibase] lazy override val metaTable = {
     if (!db.exists(MetaTableName)) {
       db.create(MetaTableName)
     }
@@ -96,31 +97,13 @@ class KeyValueCabinet[+T <: Keyspace](db: KeyValueStore[T]) extends Cabinet {
     *            If not specified, the "_id" field is used as the
     *            document key as in MongoDB.
     */
-  override def createDocuments(name: String, key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
+  override def createDocuments(name: String, key: RowKey = RowKey(DefaultRowKeyField)): Unit = {
     db.create(name)
 
     val meta = TableMeta(name, TABLE_TYPE_DOCUMENTS, key)
     metaTable.upsert(meta)
   }
 
-  /*
-    /** Creates a graph table.
-      * @param name the name of graph table.
-      */
-    def createGraph(name: String): Unit = {
-      val vertexKeyTable = graphVertexKeyTable(name)
-      require(!db.tableExists(vertexKeyTable), s"Vertex key table $vertexKeyTable already exists")
-
-      val table = db.createTable(name,
-        GraphVertexColumnFamily,
-        GraphInEdgeColumnFamily,
-        GraphOutEdgeColumnFamily)
-      table.close
-
-      val keyTable = db.createTable(vertexKeyTable, GraphVertexColumnFamily)
-      keyTable.close
-    }
-  */
   /** Drops a table. All column families in the table will be dropped. */
   override def drop(name: String): Unit = {
     db.drop(name)
@@ -142,7 +125,7 @@ class KeyValueCabinet[+T <: Keyspace](db: KeyValueStore[T]) extends Cabinet {
 
 class BigTableCabinet[+T <: BigTable](db: BigTableDatabase[T]) extends Cabinet {
 
-  private lazy val metaTable = {
+  private[unibase] lazy override val metaTable = {
     if (!db.exists(MetaTableName)) {
       db.create(MetaTableName, DocumentColumnFamily)
     }
@@ -179,23 +162,14 @@ class BigTableCabinet[+T <: BigTable](db: BigTableDatabase[T]) extends Cabinet {
     val rowkey = meta.map(TableMeta.rowkey(_)).get
     new Table(db(name), rowkey)
   }
-/*
-  /** Returns a read only graph, which doesn't need an ID
-    * generator. This is sufficient for graph traversal and analytics.
-    *
-    * @param name The name of graph table.
-    */
-  def graph(name: String): Graph = {
-    new Graph(db(name), db(graphVertexKeyTable(name)))
-  }
-*/
+
   /** Creates a document collection.
     * @param name the name of document collection.
     * @param key the document field(s) used as row key in BigTable.
     *            If not specified, the "_id" field is used as the
     *            document key as in MongoDB.
     */
-  override def createDocuments(name: String, key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
+  override def createDocuments(name: String, key: RowKey = RowKey(DefaultRowKeyField)): Unit = {
     db.create(name, DocumentColumnFamily)
 
     val meta = TableMeta(name, TABLE_TYPE_DOCUMENTS, key)
@@ -208,31 +182,13 @@ class BigTableCabinet[+T <: BigTable](db: BigTableDatabase[T]) extends Cabinet {
     *            If not specified, the "_id" field is used as the
     *            document key as in MongoDB.
     */
-  def createTable(name: String,
-                   key: RowKey = PrimitiveRowKey(DefaultRowKeyField)): Unit = {
+  def createTable(name: String, key: RowKey = RowKey(DefaultRowKeyField)): Unit = {
     db.create(name, DocumentColumnFamily)
 
     val meta = TableMeta(name, TABLE_TYPE_TABLE, key)
     metaTable.upsert(meta)
   }
-/*
-  /** Creates a graph table.
-    * @param name the name of graph table.
-    */
-  def createGraph(name: String): Unit = {
-    val vertexKeyTable = graphVertexKeyTable(name)
-    require(!db.tableExists(vertexKeyTable), s"Vertex key table $vertexKeyTable already exists")
 
-    val table = db.createTable(name,
-      GraphVertexColumnFamily,
-      GraphInEdgeColumnFamily,
-      GraphOutEdgeColumnFamily)
-    table.close
-
-    val keyTable = db.createTable(vertexKeyTable, GraphVertexColumnFamily)
-    keyTable.close
-  }
-*/
   /** Drops a table. All column families in the table will be dropped. */
   override def drop(name: String): Unit = {
     db.drop(name)
@@ -275,47 +231,24 @@ private[unicorn] object TableMeta {
     * @return JsObject of meta data.
     */
   def apply(table: String, `type`: String, key: RowKey): JsObject = {
-    val rowkey = key match {
-      case PrimitiveRowKey(key, order) => JsObject(key -> JsString(order.toString))
-      case CompositeRowKey(keys, capacity) =>
-        JsObject(
-          "compound_key" -> JsArray(keys.map { case PrimitiveRowKey(key, order) =>
-              JsObject(key -> JsString(order.toString))
-            }),
-          "capacity" -> capacity
-        )
-    }
+    val rowkey = JsArray(
+      key.fields.map { case (key, order) =>
+        JsObject(key -> JsString(order.toString))
+      }
+    )
 
-    JsObject("table" -> table, "type" -> `type`, "key" -> rowkey)
+    JsObject("table" -> table, "type" -> `type`, "key" -> rowkey, "index" -> JsObject())
   }
 
   /** Creates the RowKey from the meta data.
     * @param meta The meta data of table.
     */
   def rowkey(meta: JsValue): RowKey = {
-    val key = meta.key
-    key.compound_key match {
-      case JsUndefined => primitive(key)
-
-      case JsArray(keys) =>
-        val capacity: Int = key.capacity
-        CompositeRowKey(keys.map { key => primitive(key) }, capacity)
-
-      case _ => throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
-    }
-  }
-
-  /** Creates the primitive key. */
-  private def primitive(key: JsValue): PrimitiveRowKey = {
-    if (!key.isInstanceOf[JsObject])
-      throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
-
-    val fields = key.asInstanceOf[JsObject].fields.toSeq
-    if (fields.size != 1)
-      throw new IllegalArgumentException(s"Invalid row key configuration in metadata: $key")
-
-    val field = fields(0)
-    // Maybe this is a bug of Scala compiler. It doesn't recognize Order type alias.
-    PrimitiveRowKey(field._1, org.apache.hadoop.hbase.util.Order.valueOf(field._2))
+    val key = meta.key.asInstanceOf[JsArray]
+    new RowKey(key.elements.map { element =>
+      val field = element.asInstanceOf[JsObject].fields.toSeq(0)
+      // Maybe this is a bug of Scala compiler. It doesn't recognize Order type alias.
+      (field._1, org.apache.hadoop.hbase.util.Order.valueOf(field._2))
+    })
   }
 }

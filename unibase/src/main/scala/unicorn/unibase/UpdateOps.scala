@@ -43,7 +43,7 @@ trait UpdateOps {
       Column(str2bytes(field), serializer.serialize(value))
     }.toSeq
 
-    table.put(rowkey(key), DocumentColumnFamily, columns)
+    table.put(rowkey.serialize(key), DocumentColumnFamily, columns)
   }
 
   /** The \$unset operator deletes particular fields.
@@ -65,6 +65,6 @@ trait UpdateOps {
     */
   def unset(key: Key, doc: JsObject): Unit = {
     val columns = doc.fields.map { case (field, _) => str2bytes(field) }.toSeq
-    table.delete(rowkey(key), DocumentColumnFamily, columns)
+    table.delete(rowkey.serialize(key), DocumentColumnFamily, columns)
   }
 }

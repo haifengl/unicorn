@@ -44,7 +44,7 @@ class Table(val table: BigTable, val rowkey: RowKey) extends Documents with Upda
   }
 
   override def apply(key: Key): Option[JsObject] = {
-    apply(rowkey(key))
+    apply(rowkey.serialize(key))
   }
 
   /** Gets a document by row key. */
@@ -59,15 +59,15 @@ class Table(val table: BigTable, val rowkey: RowKey) extends Documents with Upda
   }
 
   def apply(key: Key, fields: String*): JsObject = {
-    apply(rowkey(key), fields: _*)
+    apply(rowkey.serialize(key), fields: _*)
   }
 
   override def upsert(doc: JsObject): Unit = {
-    table(rowkey(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
+    table(rowkey.serialize(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
   }
 
   override def delete(key: Key): Unit = {
-    table.delete(rowkey(key))
+    table.delete(rowkey.serialize(key))
   }
 
   /** Updates a document. The supported update operators include
