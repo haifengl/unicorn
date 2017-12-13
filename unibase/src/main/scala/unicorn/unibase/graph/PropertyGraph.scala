@@ -89,6 +89,8 @@ trait PropertyGraph extends GraphLike[Node, Relationship] {
     OrderedBytes.encodeNumeric(range, vertex.asInstanceOf[LongKey].key, Order.ASCENDING)
     if (`type`.isDefined)
       OrderedBytes.encodeString(range, `type`.get, Order.ASCENDING)
+    else
+      range.put(0.toByte) // without the extra byte, the scan will start with the vertex.
     range.getBytes.slice(0, range.getPosition)
   }
 
