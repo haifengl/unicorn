@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn
+package unicorn.unibase
 
-import unicorn.narwhal.Narwhal
+import unicorn.bigtable.OrderedBigTable
 
 package object sql {
-  implicit def narwhalSQLContext(db: Narwhal) = new SQLContext(db)
+  //implicit def unibaseSQLContext[+T <: OrderedBigTable](db: BigTableUnibase[T]) = new SQLContext(db)
 }

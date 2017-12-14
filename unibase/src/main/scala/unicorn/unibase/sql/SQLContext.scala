@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  * limitations under the License.
  *******************************************************************************/
 
-package unicorn.sql
+package unicorn.unibase.sql
 
+import unicorn.bigtable.OrderedBigTable
 import unicorn.json._
-import unicorn.unibase.$id
-import unicorn.narwhal.Narwhal
+import unicorn.unibase._
 
 /** SQL context of a Narwhal instance.
   *
   * @author Haifeng Li
   */
-class SQLContext(db: Narwhal) {
+class SQLContext[+T <: OrderedBigTable](db: BigTableUnibase[T]) {
 
   def sql(query: String): DataFrame = {
     val sql = SQLParser.parse(query)
@@ -36,7 +36,7 @@ class SQLContext(db: Narwhal) {
       throw new UnsupportedOperationException("Join is not supported yet")
 
     val table = select.relations(0) match {
-      case Table(name, _) => db(name)
+      case Table(name, _) => db.table(name)
       case Subquery(_, _) => throw new UnsupportedOperationException("Sub query is not supported yet")
     }
 
@@ -124,7 +124,7 @@ class SQLContext(db: Narwhal) {
         val elements = lst.map {
           case (FieldIdent(_, field), _) => field
           case (CountExpr(FieldIdent(_, field)), _) => field
-          case (_: CountAll, _) => $id
+          case (_: CountAll, _) => "count" //$id
           case (Sum(FieldIdent(_, field)), _) => field
           case (Avg(FieldIdent(_, field)), _) => field
           case (Min(FieldIdent(_, field)), _) => field

@@ -1,4 +1,4 @@
-package unicorn.sql
+package unicorn.unibase.sql
 
 /** AST for SQL select statement. This is base class of nodes in the AST.
   * Based on https://github.com/epfldata/dblab

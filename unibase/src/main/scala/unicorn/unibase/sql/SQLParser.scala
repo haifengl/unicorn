@@ -1,4 +1,4 @@
-package unicorn.sql
+package unicorn.unibase.sql
 
 import scala.util.matching.Regex
 //import scala.util.parsing.combinator._
