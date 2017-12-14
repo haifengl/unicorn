@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@ package unicorn.snowflake
 
 import com.typesafe.scalalogging.Logger
 
-/** 64 bit ID generator based on Twitter Snowflake.
+/** A 64-bit ID generator based on Twitter Snowflake.
   * An id is composed of:
   *  time - 41 bits (millisecond precision with a custom epoch gives us 69 years)
   *  configured worker id - 10 bits - up to 1024 workers/threads/machines
   *  sequence number - 12 bits - rolls over every 4096 per worker (with protection to avoid rollover in the same ms)
   *
-  * You should use NTP to keep your system clock accurate.
+  * NTP should be used to keep the system clock accurate.
   * Snowflake protects from non-monotonic clocks, i.e. clocks
-  * that run backwards.  If your clock is running fast and NTP
+  * that run backwards.  If the clock is running fast and NTP
   * tells it to repeat a few milliseconds, snowflake will refuse
   * to generate ids until a time that is after the last time
   * we generated an id. Even better, run in a mode where NTP
