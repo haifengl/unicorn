@@ -34,15 +34,14 @@ trait FindOps {
     *               the whole document.This parameter should not be used with Drawers.
     * @return an iterator of matched document.
     */
-  /*
-  def find(query: JsObject, fields: String*): Traversable[JsValue] = {
+  def find(query: JsObject, fields: String*): Iterator[JsObject] = {
     if (query.fields.isEmpty) {
-      return scan(fields)
+      //return scan(fields)
     }
 
-
+    Iterator.empty
   }
-  */
+
   /** Returns the scan filter based on the query predicts.
     *
     * @param query query predict object.

@@ -32,9 +32,9 @@ package object unibase {
   type Order = HBaseOrder
 
   /** Ascending sort order. */
-  val ASCENDING  = HBaseOrder.ASCENDING
+  val ASCENDING: Order  = HBaseOrder.ASCENDING
   /** Descending sort order. */
-  val DESCENDING = HBaseOrder.DESCENDING
+  val DESCENDING: Order = HBaseOrder.DESCENDING
 
   private[unibase] val UTF8 = Charset.forName("UTF-8")
   private[unibase] def str2bytes(x: String) = x.getBytes(UTF8)

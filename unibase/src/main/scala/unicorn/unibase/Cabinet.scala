@@ -80,14 +80,15 @@ class KeyValueCabinet[+T <: Keyspace](db: KeyValueStore[T]) extends Cabinet {
     * @param name The name of document collection.
     */
   override def documents(name: String): Documents = {
-    val meta = metaTable(name)
-    if (meta.isEmpty)
+    val metaOpt = metaTable(name)
+    if (metaOpt.isEmpty)
       throw new IllegalArgumentException(s"$name metadata doesn't exist")
 
-    if (meta.get.`type`.toString != TABLE_TYPE_DOCUMENTS)
+    val meta = metaOpt.get
+    if (meta.`type`.toString != TABLE_TYPE_DOCUMENTS)
       throw new IllegalArgumentException(s"$name is not a drawer")
 
-    val rowkey = meta.map(TableMeta.rowkey(_)).get
+    val rowkey = TableMeta.json2rowkey(meta.key.asInstanceOf[JsArray])
     new KeyValueDocuments(db(name), rowkey)
   }
 
@@ -137,14 +138,15 @@ class BigTableCabinet[+T <: BigTable](db: BigTableDatabase[T]) extends Cabinet {
     * @param name The name of document collection.
     */
   override def documents(name: String): Documents = {
-    val meta = metaTable(name)
-    if (meta.isEmpty)
+    val metaOpt = metaTable(name)
+    if (metaOpt.isEmpty)
       throw new IllegalArgumentException(s"$name metadata doesn't exist")
 
-    if (meta.get.`type`.toString != TABLE_TYPE_DOCUMENTS)
+    val meta = metaOpt.get
+    if (meta.`type`.toString != TABLE_TYPE_DOCUMENTS)
       throw new IllegalArgumentException(s"$name is not a drawer")
 
-    val rowkey = meta.map(TableMeta.rowkey(_)).get
+    val rowkey = TableMeta.json2rowkey(meta.key.asInstanceOf[JsArray])
     new BigTableDocuments(db(name), rowkey)
   }
 
@@ -152,14 +154,15 @@ class BigTableCabinet[+T <: BigTable](db: BigTableDatabase[T]) extends Cabinet {
     * @param name The name of document collection.
     */
   def table(name: String): Table = {
-    val meta = metaTable(name)
-    if (meta.isEmpty)
+    val metaOpt = metaTable(name)
+    if (metaOpt.isEmpty)
       throw new IllegalArgumentException(s"$name metadata doesn't exist")
 
-    if (meta.get.`type`.toString != TABLE_TYPE_TABLE)
+    val meta = metaOpt.get
+    if (meta.`type`.toString != TABLE_TYPE_TABLE)
       throw new IllegalArgumentException(s"$name is not a table")
 
-    val rowkey = meta.map(TableMeta.rowkey(_)).get
+    val rowkey = TableMeta.json2rowkey(meta.key.asInstanceOf[JsArray])
     new Table(db(name), rowkey)
   }
 
@@ -231,20 +234,22 @@ private[unicorn] object TableMeta {
     * @return JsObject of meta data.
     */
   def apply(table: String, `type`: String, key: RowKey): JsObject = {
-    val rowkey = JsArray(
+    JsObject("table" -> table, "type" -> `type`, "key" -> rowkey2json(key), "index" -> JsObject())
+  }
+
+  /** Converts RowKey to Json. */
+  def rowkey2json(key: RowKey): JsArray = {
+    JsArray(
       key.fields.map { case (key, order) =>
         JsObject(key -> JsString(order.toString))
       }
     )
-
-    JsObject("table" -> table, "type" -> `type`, "key" -> rowkey, "index" -> JsObject())
   }
 
   /** Creates the RowKey from the meta data.
-    * @param meta The meta data of table.
+    * @param key The meta data of row key.
     */
-  def rowkey(meta: JsValue): RowKey = {
-    val key = meta.key.asInstanceOf[JsArray]
+  def json2rowkey(key: JsArray): RowKey = {
     new RowKey(key.elements.map { element =>
       val field = element.asInstanceOf[JsObject].fields.toSeq(0)
       // Maybe this is a bug of Scala compiler. It doesn't recognize Order type alias.

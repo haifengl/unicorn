@@ -155,7 +155,7 @@ object GraphOps {
 
       openSet.remove(current)
       closedSet.add(current)
-      
+
       traveler.edges(current, hops).foreach { edge =>
         val neighbor = edge.to
         if (!closedSet.contains(neighbor)) {

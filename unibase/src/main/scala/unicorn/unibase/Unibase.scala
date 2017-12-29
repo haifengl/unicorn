@@ -26,6 +26,17 @@ import unicorn.unibase.graph._
   * @author Haifeng Li
   */
 trait Unibase extends Cabinet {
+  /** Returns a property graph
+    *
+    * @param name The name of graph.
+    */
+  def propertyGraph(name: String): PropertyGraph
+
+  /** Creates a property graph.
+    * @param name the name of graph.
+    */
+  def createPropertyGraph(name: String): Unit
+
   /** Returns a semantic graph
     *
     * @param name The name of graph.
@@ -37,43 +48,26 @@ trait Unibase extends Cabinet {
     */
   def createSemanticGraph(name: String): Unit
 
-  /*
-    /** Returns a document table.
-      * @param name The name of table.
-      */
-    override def apply(name: String): Table = {
-      new Table(db(name), TableMeta(db, name))
-    }
+  /** Creates an index.
+    * @param name index name.
+    * @param table the data table.
+    * @param columns the columns on which the index is built.
     */
-/*
-  /** Creates a knowledge graph table.
-    * @param name the name of graph.
-    */
-  def createKnowledgeGraph(name: String): Unit = {
-    val vertexKeyTable = graphVertexKeyTable(name)
-    require(!db.tableExists(vertexKeyTable), s"Vertex key table $vertexKeyTable already exists")
+  def createIndex(name: String, table: String, columns: (String, Order)*): Unit
 
-    val spo = db.createTable(name + KnowledgeGraphSPO)
-    spo.close
+  private[unibase] def createIndexMeta(name: String, table: String, columns: (String, Order)*): Unit = {
+    val metaOpt = metaTable(table)
+    if (metaOpt.isEmpty)
+      throw new IllegalArgumentException(s"The table $table doesn't exist")
 
-    val osp = db.createTable(name + KnowledgeGraphOSP)
-    osp.close
+    val meta = metaOpt.get
+    if (meta.index(name) != JsUndefined)
+      throw new IllegalArgumentException(s"The index $name exists")
 
-    val pos = db.createTable(name + KnowledgeGraphPOS)
-    pos.close
+    meta.index(name) = TableMeta.rowkey2json(new RowKey(columns))
+
+    metaTable.upsert(meta)
   }
-
-  /** Drops a knowledge graph. All tables related to the graph will be dropped. */
-  def dropKnowledgeGraph(name: String): Unit = {
-    db.dropTable(name + KnowledgeGraphSPO)
-    db.dropTable(name + KnowledgeGraphOSP)
-    db.dropTable(name + KnowledgeGraphPOS)
-  }
-
-  def knowledge(name: String): KnowledgeGraph = {
-
-  }
-  */
 }
 
 object Unibase {
@@ -87,27 +81,101 @@ object Unibase {
 }
 
 class KeyValueUnibase[+T <: OrderedKeyspace](db: KeyValueStore[T]) extends KeyValueCabinet[T](db) with Unibase {
+  override def documents(name: String): Documents with FindOps = {
+    val metaOpt = metaTable(name)
+    if (metaOpt.isEmpty)
+      throw new IllegalArgumentException(s"$name metadata doesn't exist")
+
+    val meta = metaOpt.get
+    if (meta.`type`.toString != TABLE_TYPE_DOCUMENTS)
+      throw new IllegalArgumentException(s"$name is not a drawer")
+
+    val rowkey = TableMeta.json2rowkey(meta.key.asInstanceOf[JsArray])
+
+    new KeyValueDocuments(db(name), rowkey) with FindOps {
+      override val index: Seq[Index] = meta.index.asInstanceOf[JsObject].fields.map { case (indexName, json) =>
+        new KeyValueIndex(db(indexName), TableMeta.json2rowkey(json.asInstanceOf[JsArray]))
+      }.toSeq
+    }
+  }
+
+  override def propertyGraph(name: String): PropertyGraph = {
+    new KeyValuePropertyGraph(db(name))
+  }
+
+  override def createPropertyGraph(name: String): Unit = {
+    db.create(name)
+  }
+
   override def semanticGraph(name: String): SemanticGraph = {
     new KeyValueSemanticGraph(db(name))
   }
 
-  /** Creates a semantic graph.
-    * @param name the name of graph.
-    */
   override def createSemanticGraph(name: String): Unit = {
+    db.create(name)
+  }
+
+  def createIndex(name: String, table: String, columns: (String, Order)*): Unit = {
+    createIndexMeta(name, table, columns: _*)
     db.create(name)
   }
 }
 
 class BigTableUnibase[+T <: OrderedBigTable](db: BigTableDatabase[T]) extends BigTableCabinet[T](db) with Unibase {
+  override def documents(name: String): Documents with FindOps = {
+    val metaOpt = metaTable(name)
+    if (metaOpt.isEmpty)
+      throw new IllegalArgumentException(s"$name metadata doesn't exist")
+
+    val meta = metaOpt.get
+    if (meta.`type`.toString != TABLE_TYPE_DOCUMENTS)
+      throw new IllegalArgumentException(s"$name is not a drawer")
+
+    val rowkey = TableMeta.json2rowkey(meta.key.asInstanceOf[JsArray])
+
+    new BigTableDocuments(db(name), rowkey) with FindOps {
+      override val index: Seq[Index] = meta.index.asInstanceOf[JsObject].fields.map { case (indexName, json) =>
+        new BigTableIndex(db(indexName), TableMeta.json2rowkey(json.asInstanceOf[JsArray]))
+      }.toSeq
+    }
+  }
+
+  override def table(name: String): Table with FindOps = {
+    val metaOpt = metaTable(name)
+    if (metaOpt.isEmpty)
+      throw new IllegalArgumentException(s"$name metadata doesn't exist")
+
+    val meta = metaOpt.get
+    if (meta.`type`.toString != TABLE_TYPE_TABLE)
+      throw new IllegalArgumentException(s"$name is not a table")
+
+    val rowkey = TableMeta.json2rowkey(meta.key.asInstanceOf[JsArray])
+
+    new Table(db(name), rowkey) with FindOps {
+      override val index: Seq[Index] = meta.index.asInstanceOf[JsObject].fields.map { case (indexName, json) =>
+        new BigTableIndex(db(indexName), TableMeta.json2rowkey(json.asInstanceOf[JsArray]))
+      }.toSeq
+    }
+  }
+
+  override def propertyGraph(name: String): PropertyGraph = {
+    new BigTablePropertyGraph(db(name))
+  }
+
+  override def createPropertyGraph(name: String): Unit = {
+    db.create(name)
+  }
+
   override def semanticGraph(name: String): SemanticGraph = {
     new BigTableSemanticGraph(db(name))
   }
 
-  /** Creates a semantic graph.
-    * @param name the name of graph.
-    */
   override def createSemanticGraph(name: String): Unit = {
+    db.create(name)
+  }
+
+  def createIndex(name: String, table: String, columns: (String, Order)*): Unit = {
+    createIndexMeta(name, table, columns: _*)
     db.create(name)
   }
 }
