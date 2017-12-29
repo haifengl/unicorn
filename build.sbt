@@ -55,7 +55,7 @@ lazy val nonPubishSettings = commonSettings ++ Seq(
 )
 
 lazy val root = project.in(file(".")).settings(nonPubishSettings: _*)
-  .aggregate(snowflake, json, kv, bigtable, hbase, cassandra, accumulo, rocksdb, unibase, narwhal, sql, shell)
+  .aggregate(snowflake, json, kv, bigtable, hbase, cassandra, accumulo, rocksdb, unibase, shell)
 
 lazy val json = project.in(file("json")).settings(commonSettings: _*)
 
@@ -85,7 +85,7 @@ lazy val sql = project.in(file("sql")).settings(commonSettings: _*).dependsOn(un
 
 //lazy val search = project.in(file("search")).settings(nonPubishSettings: _*).dependsOn(unibase)
 
-lazy val shell = project.in(file("shell")).settings(nonPubishSettings: _*).dependsOn(narwhal, sql)
+lazy val shell = project.in(file("shell")).settings(nonPubishSettings: _*).dependsOn(unibase)
 
-lazy val rhino = project.in(file("rhino")).enablePlugins(SbtTwirl).settings(nonPubishSettings: _*).dependsOn(narwhal)
+//lazy val rhino = project.in(file("rhino")).enablePlugins(SbtTwirl).settings(nonPubishSettings: _*).dependsOn(narwhal)
 
