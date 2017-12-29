@@ -12,3 +12,4 @@ libraryDependencies += "edu.stanford.nlp" % "stanford-corenlp" % "3.8.0" classif
 
 libraryDependencies += "com.github.haifengl" % "smile-nlp" % "1.5.0"
 
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.6"
