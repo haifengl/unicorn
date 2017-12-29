@@ -1,5 +1,5 @@
 /*******************************************************************************
- * (C) Copyright 2015 ADP, LLC.
+ * (C) Copyright 2017 Haifeng Li
  *   
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,17 @@ package unicorn.shell
 
 import scala.tools.nsc.interpreter.ILoop
 
-/** Unicorn shell.
+import ammonite.ops.Path
+import ammonite.runtime.Storage
+
+/** Ammonite REPL based shell.
   *
   * @author Haifeng Li
   */
-class Shell extends ILoop {
-  override def prompt = "unicorn> "
-  override def printWelcome = echo(
+object AmmoniteREPL {
+  val home = Path(System.getProperty("user.home")) / ".smile"
+  val prompt = "smile> "
+  val welcome =
     raw"""
        |                        . . . .
        |                        ,`,`,`,`,
@@ -57,5 +61,30 @@ class Shell extends ILoop {
        |  Version ${BuildInfo.version}, Scala ${BuildInfo.scalaVersion}, SBT ${BuildInfo.sbtVersion}, Built at ${BuildInfo.builtAtString}
        |===============================================================================
     """.stripMargin
+
+  val imports =
+    s"""
+       |import java.util.{Date, UUID}
+       |import java.time.{LocalDate, LocalTime, LocalDateTime}
+       |import java.sql.Timestamp
+       |import unicorn.json._
+       |import unicorn.bigtable.hbase.HBase
+       |import unicorn.unibase._
+       |import unicorn.unibase.graph._
+       |import unicorn.unibase.sql._
+       |import unicorn.narwhal._
+       |repl.prompt() = "unicorn> "
+     """.stripMargin
+
+  val repl = ammonite.Main(
+    predefCode = imports,
+    defaultPredef = true,
+    storageBackend = new Storage.Folder(home),
+    welcomeBanner = Some(welcome),
+    verboseOutput = false
   )
+
+  def run() = repl.run()
+  def runCode(code: String) = repl.runCode(code)
+  def runScript(path: Path) = repl.runScript(path, Seq.empty)
 }

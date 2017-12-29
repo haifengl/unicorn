@@ -41,6 +41,6 @@ buildInfoPackage := "unicorn.shell"
 
 buildInfoOptions += BuildInfoOption.BuildTime
 
-libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.11.11"
+libraryDependencies += "com.lihaoyi" % "ammonite" % "1.0.3" cross CrossVersion.full
 
-libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.18"
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.25"
