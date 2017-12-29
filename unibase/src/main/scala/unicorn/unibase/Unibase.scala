@@ -22,6 +22,7 @@ import unicorn.kv._
 import unicorn.unibase.graph._
 
 /** Extending Cabinet, a Unibase supports the data models that require scan operations.
+  * In addition to documents, Cabinet also supports the graph model.
   *
   * @author Haifeng Li
   */
@@ -71,11 +72,11 @@ trait Unibase extends Cabinet {
 }
 
 object Unibase {
-  def apply[T <: OrderedKeyspace](db: KeyValueStore[T]): Unibase = {
+  def apply[T <: OrderedKeyspace](db: KeyValueStore[T]): KeyValueUnibase[T] = {
     new KeyValueUnibase[T](db)
   }
 
-  def apply[T <: OrderedBigTable](db: BigTableDatabase[T]): Unibase = {
+  def apply[T <: OrderedBigTable](db: BigTableDatabase[T]): BigTableUnibase[T] = {
     new BigTableUnibase[T](db)
   }
 }

@@ -61,7 +61,6 @@ trait Documents {
   def delete(key: Key): Unit
 }
 
-
 /** Document collection by key-value store. The key of document serves
   * as the key in the underlying key-value store.
   *

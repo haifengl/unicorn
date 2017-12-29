@@ -27,16 +27,16 @@ class UnibaseSpec extends Specification {
   // Otherwise, test cases on same columns will fail due to concurrency
   sequential
   val bigtable = Accumulo()
-  val db = new Unibase(bigtable)
+  val db = Unibase(bigtable)
   val tableName = "unicorn_unibase_test"
 
   "Unibase" should {
     "create table" in {
       db.createTable(tableName)
-      bigtable.tableExists(tableName) === true
+      bigtable.exists(tableName) === true
 
       db.drop(tableName)
-      bigtable.tableExists(tableName) === false
+      bigtable.exists(tableName) === false
     }
   }
 }

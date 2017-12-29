@@ -23,8 +23,7 @@ import unicorn.kv.{Keyspace, KeyValue, KeyValueStore}
 /** A Cabinet is a database of documents. A collection of documents can be
   * stored as a Drawer or Table. Drawer uses a compact storage format but
   * can only get and save a document as the whole. In contrast, Table
-  * allows us to get/update only some (top) fields of documents.
-  * In addition to documents, Cabinet also supports the graph model.
+  * allows us to get/update some top-level fields of documents.
   *
   * @author Haifeng Li
   */
@@ -57,11 +56,11 @@ trait Cabinet {
 }
 
 object Cabinet {
-  def apply[T <: Keyspace](db: KeyValueStore[T]): Cabinet = {
+  def apply[T <: Keyspace](db: KeyValueStore[T]): KeyValueCabinet[T] = {
     new KeyValueCabinet[T](db)
   }
 
-  def apply[T <: BigTable](db: BigTableDatabase[T]): Cabinet = {
+  def apply[T <: BigTable](db: BigTableDatabase[T]): BigTableCabinet[T] = {
     new BigTableCabinet[T](db)
   }
 }

@@ -29,7 +29,7 @@ class TableSpec extends Specification with BeforeAfterAll {
   // Otherwise, test cases on same columns will fail due to concurrency
   sequential
   val bigtable = Accumulo()
-  val db = new Unibase(bigtable)
+  val db = Unibase(bigtable)
   val tableName = "unicorn_unibase_test"
   val json = JsonParser(
     """
@@ -122,7 +122,7 @@ class TableSpec extends Specification with BeforeAfterAll {
 
       bucket.update(key, update)
 
-      val doc = bucket(key, "owner", "gender").get
+      val doc = bucket(key, "owner", "gender")
       doc.owner === JsString("Poor")
       doc.gender === JsString("M")
     }

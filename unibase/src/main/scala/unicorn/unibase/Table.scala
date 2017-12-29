@@ -20,7 +20,7 @@ import unicorn.json._
 import unicorn.bigtable._
 
 /** Extending `Documents`, a `Table` is a collection of documents but can get
-  * and set only some fields of documents besides the whole document. However,
+  * and set top-level fields of documents besides the whole document. However,
   * a table may take more space on the disk.
   *
   * @author Haifeng Li
@@ -63,7 +63,10 @@ class Table(val table: BigTable, val rowkey: RowKey) extends Documents with Upda
   }
 
   override def upsert(doc: JsObject): Unit = {
-    table(rowkey.serialize(doc), DocumentColumnFamily, DocumentColumn) = serializer.serialize(doc)
+    val columns = doc.fields.map { case (field, value) =>
+      Column(str2bytes(field), serializer.serialize(value))
+    }.toSeq
+    table.put(rowkey.serialize(doc), DocumentColumnFamily, columns)
   }
 
   override def delete(key: Key): Unit = {

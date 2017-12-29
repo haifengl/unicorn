@@ -25,8 +25,6 @@ import unicorn.kv.OrderedKeyspace
   */
 trait Index {
   /** The column or columns on which the index is based.
-    * Specify two or more column names to create a composite
-    * index on the combined values in the specified columns.
     * List the columns to be included in the composite index,
     * in sort-priority order.
     */
@@ -52,7 +50,7 @@ trait Index {
   def delete(key: Array[Byte], doc: JsObject): Unit
 }
 
-/** BigTable based secondary index.
+/** Keyspace based secondary index.
   *
   * @param indexTable The index table.
   * @param column The column or columns on which the index is based.
