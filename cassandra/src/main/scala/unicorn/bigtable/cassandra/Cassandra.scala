@@ -23,15 +23,14 @@ import org.apache.cassandra.thrift.{ConsistencyLevel, KsDef, CfDef}
 import org.apache.thrift.transport.TFramedTransport
 import org.apache.thrift.transport.TSocket
 import org.apache.thrift.protocol.TBinaryProtocol
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
 import unicorn.bigtable._
 
 /** Cassandra server adapter.
   *
   * @author Haifeng Li
   */
-class Cassandra(transport: TFramedTransport) extends BigTableDatabase[CassandraTable] {
-  private lazy val logger = Logger(getClass)
+class Cassandra(transport: TFramedTransport) extends BigTableDatabase[CassandraTable] with LazyLogging {
 
   val protocol = new TBinaryProtocol(transport)
   val client = new Client(protocol)

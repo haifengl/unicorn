@@ -20,7 +20,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalTime}
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
 
 /** JSON Serializer in BSON format as defined by http://bsonspec.org/spec.html.
   * This is not fully compatible with BSON spec, where the root must be a document/JsObject.
@@ -36,8 +36,7 @@ import com.typesafe.scalalogging.Logger
   *
   * @author Haifeng Li
   */
-class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024)) {
-  private lazy val logger = Logger(getClass)
+class JsonSerializer(buffer: ByteBuffer = ByteBuffer.allocate(10 * 1024 * 1024)) extends LazyLogging {
 
   import JsonSerializer._
 

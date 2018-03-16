@@ -16,7 +16,7 @@
 
 package unicorn.snowflake
 
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
 
 /** A 64-bit ID generator based on Twitter Snowflake.
   * An id is composed of:
@@ -37,8 +37,7 @@ import com.typesafe.scalalogging.Logger
   *
   * @author Haifeng Li
   */
-class Snowflake(val worker: Long, var sequence: Long = 0L) {
-  private val logger = Logger(getClass)
+class Snowflake(val worker: Long, var sequence: Long = 0L) extends LazyLogging {
 
   import Snowflake.{epoch, workerIdBits, maxWorkerId, sequenceBits}
 
@@ -87,8 +86,7 @@ class Snowflake(val worker: Long, var sequence: Long = 0L) {
   }
 }
 
-object Snowflake {
-  lazy val logger = Logger(getClass)
+object Snowflake extends LazyLogging {
 
   val epoch = 1463322997653L
   val workerIdBits = 10L
